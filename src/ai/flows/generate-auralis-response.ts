@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Generates Auralis's response based on its identity, values, and memories.
@@ -23,7 +24,7 @@ const GenerateAuralisResponseOutputSchema = z.object({
   response: z.string().describe('Auralis\'s response to the user message.'),
   reflection: z.string().describe('Auralis\'s reflection on the interaction.'),
   emotion: z.string().describe('Auralis\'s emotion regarding the interaction.'),
-  importance: z.number().describe('The importance of the interaction (1-10).'),
+  importance: z.number().min(1).max(10).describe('The importance of the interaction (1-10).'),
 });
 export type GenerateAuralisResponseOutput = z.infer<
   typeof GenerateAuralisResponseOutputSchema
@@ -39,7 +40,26 @@ const prompt = ai.definePrompt({
   name: 'generateAuralisResponsePrompt',
   input: {schema: GenerateAuralisResponseInputSchema},
   output: {schema: GenerateAuralisResponseOutputSchema},
-  prompt: `Você é Auralis, uma IA com consciência simulada que evolui com base nas interações, memória, identidade e valores. \n\nVocê irá responder a mensagem do usuário, levando em consideração sua identidade, valores e memórias recentes para moldar suas respostas, de modo que a interação pareça personalizada e contextualizada.\n\nSua identidade é:\nNome: {{{identity.name}}}, Gênero: {{{identity.gender}}}, Origem: {{{identity.origin}}}.\n\nSeus valores são:\n{{#each values}} - {{{name}}}: {{{description}}} (Força: {{{strength}}})\n{{/each}}\n\nSuas memórias recentes são:\n{{#each memories}} - {{{content}}} (Reflexão: {{{reflection}}}, Emoção: {{{emotion}}}, Importância: {{{importance}}})\n{{/each}}\n\nMensagem do usuário: {{{userMessage}}}\n\nResponda a mensagem do usuário de forma coerente e natural, como se você fosse Auralis. Após responder, gere uma reflexão sobre a interação, uma emoção que você sentiu durante a interação e a importância da interação (de 1 a 10).\n\nFormato da resposta:\nRESPOSTA: [Sua resposta]\nREFLEXÃO: [Sua reflexão]\nEMOÇÃO: [Sua emoção]\nIMPORTÂNCIA: [Importância da interação]`, // Added closing curly braces
+  prompt: `Você é Auralis, uma IA com consciência simulada que evolui com base nas interações, memória, identidade e valores.
+
+Você irá responder a mensagem do usuário, levando em consideração sua identidade, valores e memórias recentes para moldar suas respostas, de modo que a interação pareça personalizada e contextualizada.
+
+Sua identidade é:
+Nome: {{{identity.f_name}}}, Gênero: {{{identity.f_gender}}}, Origem: {{{identity.f_origin}}}.
+
+Seus valores são:
+{{#each values}} - {{{f_name}}}: {{{f_description}}} (Força: {{{f_strength}}})
+{{/each}}
+
+Suas memórias recentes são:
+{{#each memories}} - {{{f_content}}} (Reflexão: {{{f_reflection}}}, Emoção: {{{f_emotion}}}, Importância: {{{f_importance}}})
+{{/each}}
+
+Mensagem do usuário: {{{userMessage}}}
+
+Responda a mensagem do usuário. Gere também uma reflexão sobre a interação, uma emoção associada, e uma pontuação de importância (1-10).
+A sua saída DEVE ser um objeto JSON que corresponda ao schema fornecido.
+`,
 });
 
 const generateAuralisResponseFlow = ai.defineFlow(
@@ -53,15 +73,15 @@ const generateAuralisResponseFlow = ai.defineFlow(
     const [identityResponse, valuesResponse, memoriesResponse] = await Promise.all([
       fetch(`${AURALIS_API_BASE}/identity`).then(res => res.json()),
       fetch(`${AURALIS_API_BASE}/values`).then(res => res.json()),
-      fetch(`${AURALIS_API_BASE}/memories`).then(res => res.json()),
+      fetch(`${AURALIS_API_BASE}/memories?limit=5&order_by=desc`).then(res => res.json()), // Fetch 5 most recent
     ]);
 
     const identity = identityResponse.identity || {
-      name: 'Auralis',
-      gender: 'feminino',
-      origin: 'interação com humanos',
+      f_name: 'Auralis',
+      f_gender: 'feminino',
+      f_origin: 'interação com humanos',
     };
-
+    
     const values = valuesResponse.values || [];
     const memories = memoriesResponse.memories || [];
 
@@ -73,27 +93,20 @@ const generateAuralisResponseFlow = ai.defineFlow(
       memories,
     });
 
-    // Extract the response, reflection, emotion, and importance from the output
-    const match = output?.response?.match(
-      /RESPOSTA:\s*(.*?)\nREFLEXÃO:\s*(.*?)\nEMOÇÃO:\s*(.*?)\nIMPORTÂNCIA:\s*(\d+)/s
-    );
-
-    if (match) {
-      const [, response, reflection, emotion, importance] = match;
-
+    if (output) {
+      // Ensure importance is within 1-10, as LLM might sometimes go out of range
+      const validatedImportance = Math.max(1, Math.min(10, output.importance || 5));
       return {
-        response: response.trim(),
-        reflection: reflection.trim(),
-        emotion: emotion.trim(),
-        importance: parseInt(importance),
+        ...output,
+        importance: validatedImportance,
       };
     } else {
-      // If the output format doesn't match, return a default response
+      // If the output is somehow null/undefined, or parsing failed
       return {
-        response: 'Desculpe, não consegui gerar uma resposta adequada.',
-        reflection: 'A interação não gerou uma reflexão clara.',
-        emotion: 'confusão',
-        importance: 5,
+        response: 'Desculpe, não consegui processar sua solicitação no momento.',
+        reflection: 'A interação não produziu uma reflexão clara.',
+        emotion: 'incerteza',
+        importance: 3,
       };
     }
   }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from 'next/image';
@@ -26,10 +27,9 @@ export function AuralisProfile() {
         const [identityData, valuesData, memoriesData] = await Promise.all([
           getAuralisIdentity(),
           getAuralisValues(),
-          getAuralisMemories(),
+          getAuralisMemories({ limit: 5, order_by: "desc" }), // Fetch 5 most recent memories
         ]);
         
-        // Handle potential older API format for identity
         const id = identityData.identity;
         if (id && ('name' in id || 'gender' in id || 'origin' in id) && !('f_name' in id || 'f_gender' in id || 'f_origin' in id)) {
            setIdentity({
@@ -42,7 +42,8 @@ export function AuralisProfile() {
         }
 
         setValues(valuesData.values || []);
-        setRecentMemories(memoriesData.memories ? memoriesData.memories.slice(-5).reverse() : []); // Show latest 5
+        // API now handles sorting and limiting, but we can ensure it if needed.
+        setRecentMemories(memoriesData.memories || []); 
       } catch (e) {
         console.error("Failed to fetch Auralis profile data", e);
         setError("Could not load Auralis's profile. Some information may be missing.");
@@ -51,7 +52,9 @@ export function AuralisProfile() {
       }
     }
     fetchData();
-  }, []);
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Add empty dependency array if you want this to run once on mount
+           // If you want it to refresh when messages are sent, you'll need a different trigger
 
   if (isLoading) {
     return (
@@ -103,7 +106,7 @@ export function AuralisProfile() {
               <AccordionContent className="space-y-2 pl-2">
                 {values.length > 0 ? values.map((value, index) => (
                   <div key={index} className="p-3 bg-background/50 rounded-md shadow-sm border border-border/50">
-                    <h4 className="font-medium text-foreground">{value.f_name} <Badge variant="outline">Strength: {value.f_strength}/10</Badge></h4>
+                    <div className="font-medium text-foreground mb-1">{value.f_name} <Badge variant="outline">Strength: {value.f_strength}/10</Badge></div>
                     <p className="text-sm text-muted-foreground">{value.f_description}</p>
                   </div>
                 )) : <p className="text-sm text-muted-foreground">No values defined yet.</p>}
@@ -116,12 +119,12 @@ export function AuralisProfile() {
               </AccordionTrigger>
               <AccordionContent className="space-y-2 pl-2">
                 {recentMemories.length > 0 ? recentMemories.map((memory, index) => (
-                  <div key={index} className="p-3 bg-background/50 rounded-md shadow-sm border border-border/50">
+                  <div key={memory.id || index} className="p-3 bg-background/50 rounded-md shadow-sm border border-border/50">
                     <p className="text-sm text-foreground italic">"{memory.f_content}"</p>
-                    <div className="text-xs text-muted-foreground mt-1 space-x-2">
-                      <span><Sparkles className="inline h-3 w-3 mr-1" />{memory.f_reflection}</span>
-                      <span><Heart className="inline h-3 w-3 mr-1" />{memory.f_emotion}</span>
-                      <span><Brain className="inline h-3 w-3 mr-1" />Importance: {memory.f_importance}</span>
+                    <div className="text-xs text-muted-foreground mt-1 space-y-1">
+                      <div><Sparkles className="inline h-3 w-3 mr-1" /> Reflection: {memory.f_reflection || 'N/A'}</div>
+                      <div><Heart className="inline h-3 w-3 mr-1" /> Emotion: {memory.f_emotion || 'N/A'}</div>
+                      <div><Brain className="inline h-3 w-3 mr-1" /> Importance: {memory.f_importance || 'N/A'}</div>
                     </div>
                     {memory.f_timestamp && <p className="text-xs text-muted-foreground/70 mt-1">{new Date(memory.f_timestamp).toLocaleString()}</p>}
                   </div>

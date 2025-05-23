@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -75,11 +76,11 @@ export function DebugMemoryView() {
                   <Card key={mem.id || crypto.randomUUID()} className="bg-card shadow-sm hover:shadow-md transition-shadow">
                     <CardContent className="p-4 text-sm">
                       <p className="font-medium text-foreground mb-1 break-words">"{mem.f_content}"</p>
-                      <div className="text-xs text-muted-foreground space-y-0.5">
-                        <p className="flex items-center"><Tag className="h-3 w-3 mr-1.5 text-accent" /> Emotion: <Badge variant="outline" className="ml-1">{mem.f_emotion}</Badge></p>
-                        <p className="flex items-center"><BarChartBig className="h-3 w-3 mr-1.5 text-primary/80" /> Importance: <Badge variant="secondary" className="ml-1">{mem.f_importance}/10</Badge></p>
+                      <div className="text-xs text-muted-foreground space-y-0.5 mt-2">
+                        <div className="flex items-center"><Tag className="h-3 w-3 mr-1.5 text-accent" /> Emotion: <Badge variant="outline" className="ml-1">{mem.f_emotion || 'N/A'}</Badge></div>
+                        <div className="flex items-center"><BarChartBig className="h-3 w-3 mr-1.5 text-primary/80" /> Importance: <Badge variant="secondary" className="ml-1">{mem.f_importance || 'N/A'}/10</Badge></div>
                         {mem.f_timestamp && (
-                          <p className="flex items-center"><Clock className="h-3 w-3 mr-1.5" /> Timestamp: {new Date(mem.f_timestamp).toLocaleString()}</p>
+                          <div className="flex items-center mt-1"><Clock className="h-3 w-3 mr-1.5" /> Timestamp: {new Date(mem.f_timestamp).toLocaleString()}</div>
                         )}
                       </div>
                     </CardContent>

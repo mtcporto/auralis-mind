@@ -1,3 +1,4 @@
+
 import type {
   AuralisIdentityResponse,
   AuralisMemoriesResponse,
@@ -17,7 +18,10 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
     if (!response.ok) {
       const errorData = await response.text();
       console.error(`API Error (${response.status}) for ${endpoint}: ${errorData}`);
-      throw new Error(`Failed to fetch ${endpoint}: ${response.statusText}`);
+      throw new Error(`Failed to fetch ${endpoint}: ${response.statusText} - ${errorData}`);
+    }
+    if (response.status === 204) { // No Content
+      return {} as T; // Or handle as appropriate for your types
     }
     return response.json() as Promise<T>;
   } catch (error) {
@@ -30,11 +34,31 @@ export async function getAuralisIdentity(): Promise<AuralisIdentityResponse> {
   return fetchAPI<AuralisIdentityResponse>('/identity');
 }
 
-export async function getAuralisMemories(limit: number = 10): Promise<AuralisMemoriesResponse> {
-  // The API doesn't seem to support limit, so we fetch all and slice if needed client-side.
-  // For now, returning all.
-  return fetchAPI<AuralisMemoriesResponse>('/memories');
+interface GetMemoriesParams {
+  limit?: number;
+  order_by?: 'asc' | 'desc';
+  // Add other query parameters if the API supports them
 }
+
+export async function getAuralisMemories(params?: GetMemoriesParams): Promise<AuralisMemoriesResponse> {
+  let endpoint = '/memories';
+  if (params) {
+    const queryParams = new URLSearchParams();
+    if (params.limit !== undefined) {
+      queryParams.append('limit', params.limit.toString());
+    }
+    if (params.order_by) {
+      queryParams.append('order_by', params.order_by);
+    }
+    // Add other params here
+    const queryString = queryParams.toString();
+    if (queryString) {
+      endpoint += `?${queryString}`;
+    }
+  }
+  return fetchAPI<AuralisMemoriesResponse>(endpoint);
+}
+
 
 export async function getAuralisValues(): Promise<AuralisValuesResponse> {
   return fetchAPI<AuralisValuesResponse>('/values');

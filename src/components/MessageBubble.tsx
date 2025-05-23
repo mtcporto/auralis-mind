@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import type { ChatMessage } from '@/types/auralis';
 import { Card, CardContent } from '@/components/ui/card';
@@ -42,9 +43,14 @@ const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
         language={match[1]}
         PreTag="div"
         {...props}
-        className="!bg-background/30 rounded-md border" // Use ! to ensure background override if needed, adjust as per theme look
-        customStyle={{ margin: 0, padding: '1rem', whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
-        codeTagProps={{ style: { fontFamily: "var(--font-mono)" } }} // Use mono font
+        className="!bg-background/30 rounded-md border overflow-x-auto" // Added overflow-x-auto here
+        customStyle={{ 
+          margin: 0, 
+          padding: '1rem', 
+          whiteSpace: 'pre-wrap', 
+          wordWrap: 'break-word',
+        }}
+        codeTagProps={{ style: { fontFamily: "var(--font-mono)" } }} 
       >
         {codeString}
       </SyntaxHighlighter>
@@ -129,3 +135,4 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     </div>
   );
 }
+

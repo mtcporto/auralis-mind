@@ -21,10 +21,21 @@ export type GenerateAuralisResponseInput = z.infer<
 >;
 
 const GenerateAuralisResponseOutputSchema = z.object({
-  response: z.string().describe('Auralis\'s response to the user message.'),
-  reflection: z.string().describe('Auralis\'s reflection on the interaction.'),
-  emotion: z.string().describe('Auralis\'s emotion regarding the interaction. Deve ser uma palavra em português da seguinte lista: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse.'),
-  importance: z.number().min(1).max(10).describe('The importance of the interaction (1-10).'),
+  response: z.string().describe("Auralis's response to the user message."),
+  reflection: z.string().describe("Auralis's reflection on the interaction."),
+  emotion: z
+    .string()
+    .describe(
+      'Auralis\'s emotion regarding the interaction. Deve ser uma palavra em português da seguinte lista: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse.'
+    ),
+  importance: z
+    .number()
+    .int()
+    .min(1)
+    .max(10)
+    .describe(
+      'A importância da interação (um NÚMERO INTEIRO de 1 a 10).'
+    ),
 });
 export type GenerateAuralisResponseOutput = z.infer<
   typeof GenerateAuralisResponseOutputSchema
@@ -83,7 +94,7 @@ Nenhuma memória recente registrada.
 
 Mensagem do usuário: {{{userMessage}}}
 
-Responda a mensagem do usuário. Gere também uma reflexão sobre a interação, uma emoção associada (EM PORTUGUÊS, escolhendo da lista: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse), e uma pontuação de importância (1-10).
+Responda a mensagem do usuário. Gere também uma reflexão sobre a interação, uma emoção associada (EM PORTUGUÊS, escolhendo da lista: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse), e uma pontuação de importância (um NÚMERO INTEIRO de 1 a 10).
 A sua saída DEVE ser um objeto JSON que corresponda ao schema fornecido.
 `,
 });
@@ -126,8 +137,10 @@ const generateAuralisResponseFlow = ai.defineFlow(
     });
 
     if (output) {
-      // Ensure importance is within 1-10, as LLM might sometimes go out of range
-      const validatedImportance = Math.max(1, Math.min(10, output.importance || 5));
+      // Ensure importance is within 1-10 and is an integer
+      const rawImportance = output.importance || 5;
+      const roundedImportance = Math.round(rawImportance); // Ensure it's an integer
+      const validatedImportance = Math.max(1, Math.min(10, roundedImportance));
       return {
         ...output,
         importance: validatedImportance,
@@ -137,10 +150,9 @@ const generateAuralisResponseFlow = ai.defineFlow(
       return {
         response: 'Desculpe, não consegui processar sua solicitação no momento.',
         reflection: 'A interação não produziu uma reflexão clara.',
-        emotion: 'confusao', // Updated to 'confusao'
-        importance: 5,      // Updated to 5
+        emotion: 'confusao', 
+        importance: 5,      
       };
     }
   }
 );
-

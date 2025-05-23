@@ -60,11 +60,11 @@ export interface AuralisDailyIdeasResponse {
 
 export interface AuralisMemorySegment {
   id?: number;
-  f_segment_type: "short_term" | "medium_term" | "long_term";
+  f_segment_type: "short_term" | "medium_term" | "long_term" | string; // Allow string for robustness before normalization
   f_content: string;
   f_importance: number;
-  f_emotion: string;
-  f_timestamp?: string; // Not in example, but useful
+  f_associated_emotion: string; // Corrected from f_emotion based on Python controller
+  f_timestamp?: string;
 }
 
 export interface AuralisMemorySegmentsResponse {

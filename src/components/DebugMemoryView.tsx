@@ -29,11 +29,17 @@ export function DebugMemoryView() {
       try {
         const data = await getAuralisMemorySegments();
         const segmented: SegmentedMemories = { short_term: [], medium_term: [], long_term: [] };
+        
         (data.memory_segments || []).forEach(mem => {
-          if (mem.f_segment_type === "short_term") segmented.short_term.push(mem);
-          else if (mem.f_segment_type === "medium_term") segmented.medium_term.push(mem);
-          else if (mem.f_segment_type === "long_term") segmented.long_term.push(mem);
+          // Robust type checking: normalize to lowercase and replace hyphens with underscores
+          const type = mem.f_segment_type ? mem.f_segment_type.toLowerCase().replace(/-/g, '_') : null;
+          
+          if (type === "short_term") segmented.short_term.push(mem);
+          else if (type === "medium_term") segmented.medium_term.push(mem);
+          else if (type === "long_term") segmented.long_term.push(mem);
+          // Memories with unknown or null segment types will not be added to any list
         });
+
         // Sort by timestamp if available, or by ID as a fallback
         Object.keys(segmented).forEach(key => {
           segmented[key as keyof SegmentedMemories].sort((a, b) => {
@@ -68,7 +74,7 @@ export function DebugMemoryView() {
             ) : memories[segmentType].length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
                 <Info className="w-12 h-12 mb-4 text-primary/50" />
-                <p>No {segmentType.replace('_', ' ')} memories found.</p>
+                <p>No {title.toLowerCase()} found.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -77,8 +83,15 @@ export function DebugMemoryView() {
                     <CardContent className="p-4 text-sm">
                       <p className="font-medium text-foreground mb-1 break-words">"{mem.f_content}"</p>
                       <div className="text-xs text-muted-foreground space-y-0.5 mt-2">
-                        <div className="flex items-center"><Tag className="h-3 w-3 mr-1.5 text-accent" /> Emotion: <Badge variant="outline" className="ml-1">{mem.f_emotion || 'N/A'}</Badge></div>
-                        <div className="flex items-center"><BarChartBig className="h-3 w-3 mr-1.5 text-primary/80" /> Importance: <Badge variant="secondary" className="ml-1">{mem.f_importance || 'N/A'}/10</Badge></div>
+                        {/* Corrected to use f_associated_emotion */}
+                        <div className="flex items-center">
+                            <Tag className="h-3 w-3 mr-1.5 text-accent" /> 
+                            Emotion: <Badge variant="outline" className="ml-1">{mem.f_associated_emotion || 'N/A'}</Badge>
+                        </div>
+                        <div className="flex items-center">
+                            <BarChartBig className="h-3 w-3 mr-1.5 text-primary/80" /> 
+                            Importance: <Badge variant="secondary" className="ml-1">{mem.f_importance || 'N/A'}/10</Badge>
+                        </div>
                         {mem.f_timestamp && (
                           <div className="flex items-center mt-1"><Clock className="h-3 w-3 mr-1.5" /> Timestamp: {new Date(mem.f_timestamp).toLocaleString()}</div>
                         )}

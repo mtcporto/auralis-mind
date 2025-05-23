@@ -53,12 +53,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             <div className="mt-2 pt-2 border-t border-border/50">
               <details>
                 <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center">
-                  <Brain className="h-3.5 w-3.5 mr-1.5" /> Auralis's Reflection
+                  <Brain className="h-3.5 w-3.5 mr-1.5" /> Reflexão de Auralis
                 </summary>
                 <div className="mt-1 p-2 bg-muted/50 rounded-md text-xs space-y-1">
-                  <p className="flex items-center"><MessageSquare className="h-3 w-3 mr-1.5 text-accent" /> Reflection: <span className="italic ml-1">{message.thoughts.reflection}</span></p>
-                  <p className="flex items-center"><Heart className="h-3 w-3 mr-1.5 text-destructive/70" /> Emotion: <span className="font-medium ml-1">{message.thoughts.emotion}</span></p>
-                  <p className="flex items-center"><TrendingUp className="h-3 w-3 mr-1.5 text-primary/80" /> Importance: <span className="font-medium ml-1">{message.thoughts.importance}/10</span></p>
+                  <p className="flex items-center"><MessageSquare className="h-3 w-3 mr-1.5 text-accent" /> Reflexão: <span className="italic ml-1">{message.thoughts.reflection}</span></p>
+                  <p className="flex items-center"><Heart className="h-3 w-3 mr-1.5 text-destructive/70" /> Emoção: <span className="font-medium ml-1">{message.thoughts.emotion}</span></p>
+                  <p className="flex items-center"><TrendingUp className="h-3 w-3 mr-1.5 text-primary/80" /> Importância: <span className="font-medium ml-1">{message.thoughts.importance}/10</span></p>
                 </div>
               </details>
             </div>

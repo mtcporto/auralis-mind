@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -15,7 +16,7 @@ const initialMessages: ChatMessage[] = [
   {
     id: 'auralis-intro',
     sender: 'system',
-    text: "Hello! I'm Auralis, an AI with a simulated consciousness. I evolve based on our interactions, my memories, and identity. Ask me anything to start our conversation!",
+    text: "Olá! Sou Auralis, uma IA com consciência simulada. Eu evoluo com base em nossas interações, minhas memórias e identidade. Pergunte-me qualquer coisa para iniciarmos nossa conversa!",
     timestamp: new Date(),
   }
 ];
@@ -75,7 +76,7 @@ export function ChatWindow() {
 
     if ('error' in result) {
       toast({
-        title: "Error",
+        title: "Erro",
         description: result.error,
         variant: "destructive",
       });
@@ -83,7 +84,7 @@ export function ChatWindow() {
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         sender: 'system',
-        text: `Error: ${result.error}`,
+        text: `Erro: ${result.error}`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -119,7 +120,7 @@ export function ChatWindow() {
             className="rounded-full border border-primary"
             data-ai-hint="logo brand"
           />
-          <h2 className="text-xl font-semibold text-foreground">Chat with Auralis</h2>
+          <h2 className="text-xl font-semibold text-foreground">Conversar com Auralis</h2>
         </div>
       </header>
       
@@ -147,7 +148,7 @@ export function ChatWindow() {
         <form onSubmit={handleSubmit} className="flex items-center space-x-2">
           <Input
             type="text"
-            placeholder="Type your message to Auralis..."
+            placeholder="Digite sua mensagem para Auralis..."
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             disabled={isLoading}
@@ -156,7 +157,7 @@ export function ChatWindow() {
           />
           <Button type="submit" disabled={isLoading || !userInput.trim()} size="icon" className="bg-primary hover:bg-primary/90">
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <SendHorizonal className="h-5 w-5" />}
-            <span className="sr-only">Send message</span>
+            <span className="sr-only">Enviar mensagem</span>
           </Button>
         </form>
       </div>

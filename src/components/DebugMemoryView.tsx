@@ -49,8 +49,8 @@ export function DebugMemoryView() {
         });
         setMemories(segmented);
       } catch (e) {
-        console.error("Failed to fetch memory segments", e);
-        setError("Could not load memory segments. Please try again later.");
+        console.error("Falha ao buscar segmentos de memória", e);
+        setError("Não foi possível carregar os segmentos de memória. Por favor, tente novamente mais tarde.");
       } finally {
         setIsLoading(false);
       }
@@ -58,12 +58,12 @@ export function DebugMemoryView() {
     fetchData();
   }, []);
 
-  const renderMemoryList = (segmentType: keyof SegmentedMemories, title: string) => (
+  const renderMemoryList = (segmentType: keyof SegmentedMemories, title: string, tabTitle: string) => (
     <TabsContent value={segmentType} className="mt-0">
       <Card className="border-0 shadow-none">
         <CardHeader className="p-4">
           <CardTitle className="text-xl flex items-center"><Brain className="mr-2 h-5 w-5 text-primary" /> {title}</CardTitle>
-          <CardDescription>Displaying {memories[segmentType].length} memories.</CardDescription>
+          <CardDescription>Exibindo {memories[segmentType].length} memórias.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <ScrollArea className="h-[calc(100vh-280px)] p-4 pt-0"> {/* Adjust height as needed */}
@@ -74,7 +74,7 @@ export function DebugMemoryView() {
             ) : memories[segmentType].length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
                 <Info className="w-12 h-12 mb-4 text-primary/50" />
-                <p>No {title.toLowerCase()} found.</p>
+                <p>Nenhuma memória de {tabTitle.toLowerCase()} encontrada.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -83,17 +83,16 @@ export function DebugMemoryView() {
                     <CardContent className="p-4 text-sm">
                       <p className="font-medium text-foreground mb-1 break-words">"{mem.f_content}"</p>
                       <div className="text-xs text-muted-foreground space-y-0.5 mt-2">
-                        {/* Corrected to use f_associated_emotion */}
                         <div className="flex items-center">
                             <Tag className="h-3 w-3 mr-1.5 text-accent" /> 
-                            Emotion: <Badge variant="outline" className="ml-1">{mem.f_associated_emotion || 'N/A'}</Badge>
+                            Emoção: <Badge variant="outline" className="ml-1">{mem.f_associated_emotion || 'N/D'}</Badge>
                         </div>
                         <div className="flex items-center">
                             <BarChartBig className="h-3 w-3 mr-1.5 text-primary/80" /> 
-                            Importance: <Badge variant="secondary" className="ml-1">{mem.f_importance || 'N/A'}/10</Badge>
+                            Importância: <Badge variant="secondary" className="ml-1">{mem.f_importance || 'N/D'}/10</Badge>
                         </div>
                         {mem.f_timestamp && (
-                          <div className="flex items-center mt-1"><Clock className="h-3 w-3 mr-1.5" /> Timestamp: {new Date(mem.f_timestamp).toLocaleString()}</div>
+                          <div className="flex items-center mt-1"><Clock className="h-3 w-3 mr-1.5" /> Registro: {new Date(mem.f_timestamp).toLocaleString('pt-BR')}</div>
                         )}
                       </div>
                     </CardContent>
@@ -111,14 +110,14 @@ export function DebugMemoryView() {
     <div className="p-4 md:p-6 h-full">
       <Tabs defaultValue="short_term" className="w-full h-full flex flex-col bg-background rounded-xl shadow-xl overflow-hidden">
         <TabsList className="grid w-full grid-cols-3 rounded-none border-b bg-muted/30 p-0 h-14">
-          <TabsTrigger value="short_term" className="h-full rounded-none text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-inner">Short-Term</TabsTrigger>
-          <TabsTrigger value="medium_term" className="h-full rounded-none text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-inner">Medium-Term</TabsTrigger>
-          <TabsTrigger value="long_term" className="h-full rounded-none text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-inner">Long-Term</TabsTrigger>
+          <TabsTrigger value="short_term" className="h-full rounded-none text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-inner">Curto Prazo</TabsTrigger>
+          <TabsTrigger value="medium_term" className="h-full rounded-none text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-inner">Médio Prazo</TabsTrigger>
+          <TabsTrigger value="long_term" className="h-full rounded-none text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-inner">Longo Prazo</TabsTrigger>
         </TabsList>
         <div className="flex-grow overflow-hidden">
-          {renderMemoryList("short_term", "Short-Term Memories")}
-          {renderMemoryList("medium_term", "Medium-Term Memories")}
-          {renderMemoryList("long_term", "Long-Term Memories")}
+          {renderMemoryList("short_term", "Memórias de Curto Prazo", "Curto Prazo")}
+          {renderMemoryList("medium_term", "Memórias de Médio Prazo", "Médio Prazo")}
+          {renderMemoryList("long_term", "Memórias de Longo Prazo", "Longo Prazo")}
         </div>
       </Tabs>
     </div>

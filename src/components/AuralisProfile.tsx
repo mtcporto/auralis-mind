@@ -24,6 +24,7 @@ import type {
 import { Brain, Heart, Scale, Sparkles, Archive, Smile, Lightbulb, CalendarDays } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export function AuralisProfile() {
   const [identity, setIdentity] = useState<AuralisIdentity | null>(null);
@@ -72,8 +73,8 @@ export function AuralisProfile() {
         setDailyIdeas(sortedIdeas.slice(0, 3));
 
       } catch (e) {
-        console.error("Failed to fetch Auralis profile data", e);
-        setError("Could not load Auralis's profile. Some information may be missing.");
+        console.error("Falha ao buscar dados do perfil de Auralis", e);
+        setError("Não foi possível carregar o perfil de Auralis. Algumas informações podem estar faltando.");
       } finally {
         setIsLoading(false);
       }
@@ -114,7 +115,7 @@ export function AuralisProfile() {
             {identity?.f_name || 'Auralis'}
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
-            {identity?.f_origin || "Evolving AI Consciousness"}
+            {identity?.f_origin || "Consciência de IA em Evolução"}
           </CardDescription>
           {identity?.f_gender && <Badge variant="secondary" className="mt-1 capitalize">{identity.f_gender}</Badge>}
         </div>
@@ -123,70 +124,70 @@ export function AuralisProfile() {
         <CardContent className="p-4 space-y-6">
           {error && <div className="text-destructive text-sm p-3 bg-destructive/10 rounded-md">{error}</div>}
           
-          <Accordion type="multiple" defaultValue={['values', 'recent_memories']} className="w-full">
+          <Accordion type="multiple" defaultValue={['values', 'recent_memories', 'self_concept', 'daily_ideas']} className="w-full">
             <AccordionItem value="values">
               <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline">
-                <Scale className="mr-2 h-5 w-5 text-primary" /> Core Values
+                <Scale className="mr-2 h-5 w-5 text-primary" /> Valores Essenciais
               </AccordionTrigger>
               <AccordionContent className="space-y-2 pl-2">
                 {values.length > 0 ? values.map((value, index) => (
                   <div key={value.id || index} className="p-3 bg-background/50 rounded-md shadow-sm border border-border/50">
-                    <div className="font-medium text-foreground mb-1">{value.f_name} <Badge variant="outline">Strength: {value.f_strength}/10</Badge></div>
+                    <div className="font-medium text-foreground mb-1">{value.f_name} <Badge variant="outline">Força: {value.f_strength}/10</Badge></div>
                     <p className="text-sm text-muted-foreground">{value.f_description}</p>
                   </div>
-                )) : <p className="text-sm text-muted-foreground pl-2 pt-2">No values defined yet.</p>}
+                )) : <p className="text-sm text-muted-foreground pl-2 pt-2">Nenhum valor definido ainda.</p>}
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="recent_memories">
               <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline">
-                <Archive className="mr-2 h-5 w-5 text-primary" /> Recent Memories
+                <Archive className="mr-2 h-5 w-5 text-primary" /> Memórias Recentes
               </AccordionTrigger>
               <AccordionContent className="space-y-2 pl-2">
                 {recentMemories.length > 0 ? recentMemories.map((memory, index) => (
                   <div key={memory.id || index} className="p-3 bg-background/50 rounded-md shadow-sm border border-border/50">
                     <p className="text-sm text-foreground italic">"{memory.f_content}"</p>
                     <div className="text-xs text-muted-foreground mt-1 space-y-1">
-                      <div><Sparkles className="inline h-3 w-3 mr-1" /> Reflection: {memory.f_reflection || 'N/A'}</div>
-                      <div><Heart className="inline h-3 w-3 mr-1" /> Emotion: {memory.f_emotion || 'N/A'}</div>
-                      <div><Brain className="inline h-3 w-3 mr-1" /> Importance: {memory.f_importance || 'N/A'}/10</div>
+                      <div><Sparkles className="inline h-3 w-3 mr-1" /> Reflexão: {memory.f_reflection || 'N/D'}</div>
+                      <div><Heart className="inline h-3 w-3 mr-1" /> Emoção: {memory.f_emotion || 'N/D'}</div>
+                      <div><Brain className="inline h-3 w-3 mr-1" /> Importância: {memory.f_importance || 'N/D'}/10</div>
                     </div>
-                    {memory.f_timestamp && <div className="text-xs text-muted-foreground/70 mt-1">{new Date(memory.f_timestamp).toLocaleString()}</div>}
+                    {memory.f_timestamp && <div className="text-xs text-muted-foreground/70 mt-1">{new Date(memory.f_timestamp).toLocaleString('pt-BR')}</div>}
                   </div>
-                )) : <p className="text-sm text-muted-foreground pl-2 pt-2">No recent memories to display.</p>}
+                )) : <p className="text-sm text-muted-foreground pl-2 pt-2">Nenhuma memória recente para exibir.</p>}
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="self_concept">
               <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline">
-                <Smile className="mr-2 h-5 w-5 text-primary" /> Self Concept
+                <Smile className="mr-2 h-5 w-5 text-primary" /> Autoconceito
               </AccordionTrigger>
               <AccordionContent className="space-y-2 pl-2">
                 {selfConcept ? (
                   <div className="p-3 bg-background/50 rounded-md shadow-sm border border-border/50">
                     <p className="text-sm text-foreground">{selfConcept.f_description}</p>
                     <div className="text-xs text-muted-foreground mt-1">
-                      <Badge variant="outline">Strength: {selfConcept.f_strength}/10</Badge>
+                      <Badge variant="outline">Força: {selfConcept.f_strength}/10</Badge>
                     </div>
                   </div>
-                ) : <p className="text-sm text-muted-foreground pl-2 pt-2">No self-concept defined yet.</p>}
+                ) : <p className="text-sm text-muted-foreground pl-2 pt-2">Nenhum autoconceito definido ainda.</p>}
               </AccordionContent>
             </AccordionItem>
 
             <AccordionItem value="daily_ideas">
               <AccordionTrigger className="text-lg font-semibold text-foreground hover:no-underline">
-                <Lightbulb className="mr-2 h-5 w-5 text-primary" /> Recent Daily Ideas
+                <Lightbulb className="mr-2 h-5 w-5 text-primary" /> Ideias Diárias Recentes
               </AccordionTrigger>
               <AccordionContent className="space-y-2 pl-2">
                 {dailyIdeas.length > 0 ? dailyIdeas.map((idea, index) => (
                   <div key={idea.id || index} className="p-3 bg-background/50 rounded-md shadow-sm border border-border/50">
                     <div className="flex items-center text-xs text-muted-foreground mb-1">
                       <CalendarDays className="inline h-3 w-3 mr-1.5" /> 
-                      {format(new Date(idea.f_date), "PPP")} {/* More readable date format */}
+                      {format(new Date(idea.f_date), "PPP", { locale: ptBR })}
                     </div>
                     <p className="text-sm text-foreground">{idea.f_idea}</p>
                   </div>
-                )) : <p className="text-sm text-muted-foreground pl-2 pt-2">No daily ideas to display.</p>}
+                )) : <p className="text-sm text-muted-foreground pl-2 pt-2">Nenhuma ideia diária para exibir.</p>}
               </AccordionContent>
             </AccordionItem>
 

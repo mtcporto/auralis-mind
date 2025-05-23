@@ -23,18 +23,18 @@ export async function handleUserMessageAction(
 
     if (!flowOutput || !flowOutput.response) {
       console.error("AI flow did not return a valid response:", flowOutput);
-      return { error: "Auralis is currently unable to respond. Please try again later." };
+      return { error: "Auralis não consegue responder no momento. Por favor, tente novamente mais tarde." };
     }
     
     const { response, reflection, emotion, importance } = flowOutput;
 
-    // 2. Prepare memory data to be saved, mapping to non-prefixed keys for the API
+    // 2. Prepare memory data to be saved, using non-prefixed keys for the API POST payload
     const memoryToSave: AuralisMemoryPostPayload = {
-      type: "episodic", // Corresponds to f_type
-      content: userInput, // Corresponds to f_content
-      reflection: reflection || "Nenhuma reflexão específica.", // Corresponds to f_reflection
-      emotion: (emotion || "neutralidade").toLowerCase(), // Corresponds to f_emotion
-      importance: importance, // Corresponds to f_importance (already validated as integer)
+      type: "episodic", 
+      content: userInput, 
+      reflection: reflection || "Nenhuma reflexão específica.", 
+      emotion: (emotion || "neutralidade").toLowerCase(), 
+      importance: importance, 
     };
 
     console.log(">>>> [actions.ts] Memory to Save to API (non-prefixed keys):", JSON.stringify(memoryToSave, null, 2));
@@ -56,6 +56,6 @@ export async function handleUserMessageAction(
     };
   } catch (error) {
     console.error("Error in handleUserMessageAction:", error);
-    return { error: "An unexpected error occurred. Please try again." };
+    return { error: "Ocorreu um erro inesperado. Por favor, tente novamente." };
   }
 }

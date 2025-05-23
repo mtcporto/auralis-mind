@@ -28,7 +28,7 @@ export default function AuralisMindPage() {
               <Button variant="outline" size="sm" asChild>
                 <a>
                   <BookOpenCheck className="h-4 w-4 mr-2" />
-                  Debug Memories
+                  Depurar Memórias
                 </a>
               </Button>
             </Link>

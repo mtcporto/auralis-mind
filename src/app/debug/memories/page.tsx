@@ -24,7 +24,7 @@ export default function DebugMemoriesPage() {
               className="rounded-md"
               data-ai-hint="logo brand"
             />
-            <h1 className="text-2xl font-semibold text-primary">Auralis Memories (Debug)</h1>
+            <h1 className="text-2xl font-semibold text-primary">Memórias de Auralis (Depuração)</h1>
           </div>
           <ThemeToggleButton />
         </div>
@@ -37,6 +37,6 @@ export default function DebugMemoriesPage() {
 }
 
 export const metadata = {
-  title: "Auralis Debug Memories | Auralis Mind",
-  description: "Debug view for Auralis's segmented memories.",
+  title: "Depuração de Memórias Auralis | Auralis Mind",
+  description: "Visão de depuração para as memórias segmentadas de Auralis.",
 };

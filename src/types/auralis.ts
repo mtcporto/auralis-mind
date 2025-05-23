@@ -24,6 +24,15 @@ export interface AuralisMemory {
   f_importance: number; // 1-10
 }
 
+// Payload for POSTing a new memory - keys match Python backend expectations
+export interface AuralisMemoryPostPayload {
+  type: string;
+  content: string;
+  reflection: string;
+  emotion: string;
+  importance: number;
+}
+
 export interface AuralisMemoriesResponse {
   memories: AuralisMemory[];
 }

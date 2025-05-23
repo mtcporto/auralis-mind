@@ -4,7 +4,7 @@
 
 import { generateAuralisResponse } from "@/ai/flows/generate-auralis-response";
 import { addAuralisMemory } from "@/lib/auralisAPI";
-import type { AuralisMemory } from "@/types/auralis";
+import type { AuralisMemoryPostPayload } from "@/types/auralis"; // Import the new payload type
 
 interface AuralisInteractionResult {
   response: string;
@@ -28,16 +28,16 @@ export async function handleUserMessageAction(
     
     const { response, reflection, emotion, importance } = flowOutput;
 
-    // 2. Prepare memory data to be saved
-    const memoryToSave: Omit<AuralisMemory, "id" | "f_timestamp"> = {
-      f_type: "episodic",
-      f_content: userInput, // userInput is guaranteed to be non-empty by ChatWindow.tsx
-      f_reflection: reflection || "Nenhuma reflexão específica.", // Ensure non-empty string
-      f_emotion: (emotion || "neutralidade").toLowerCase(), // Ensure non-empty string, then lowercase
-      f_importance: importance, // This is already a validated integer
+    // 2. Prepare memory data to be saved, mapping to non-prefixed keys for the API
+    const memoryToSave: AuralisMemoryPostPayload = {
+      type: "episodic", // Corresponds to f_type
+      content: userInput, // Corresponds to f_content
+      reflection: reflection || "Nenhuma reflexão específica.", // Corresponds to f_reflection
+      emotion: (emotion || "neutralidade").toLowerCase(), // Corresponds to f_emotion
+      importance: importance, // Corresponds to f_importance (already validated as integer)
     };
 
-    console.log(">>>> [actions.ts] Memory to Save to API:", JSON.stringify(memoryToSave, null, 2));
+    console.log(">>>> [actions.ts] Memory to Save to API (non-prefixed keys):", JSON.stringify(memoryToSave, null, 2));
 
     // 3. Save the memory to Auralis backend
     try {
@@ -59,4 +59,3 @@ export async function handleUserMessageAction(
     return { error: "An unexpected error occurred. Please try again." };
   }
 }
-

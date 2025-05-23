@@ -5,6 +5,7 @@ import type {
   AuralisValue,
   AuralisValuesResponse,
   AuralisMemory,
+  AuralisMemoryPostPayload, // Import the new type
   AuralisMemorySegmentsResponse,
   AuralisDailyIdeasResponse,
   AuralisSelfConceptResponse,
@@ -64,13 +65,14 @@ export async function getAuralisValues(): Promise<AuralisValuesResponse> {
   return fetchAPI<AuralisValuesResponse>('/values');
 }
 
-export async function addAuralisMemory(memoryData: Omit<AuralisMemory, 'id' | 'f_timestamp'>): Promise<AuralisMemory> {
-  return fetchAPI<AuralisMemory>('/memories', {
+// Update the function to accept AuralisMemoryPostPayload
+export async function addAuralisMemory(memoryData: AuralisMemoryPostPayload): Promise<AuralisMemory> { // Return type might still be AuralisMemory if API returns the created object with f_ prefixes
+  return fetchAPI<AuralisMemory>('/memories', { // Assuming API returns the full memory object (with f_ prefixes) after creation
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(memoryData),
+    body: JSON.stringify(memoryData), // memoryData now has non-prefixed keys
   });
 }
 

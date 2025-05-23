@@ -112,10 +112,13 @@ export function ChatWindow() {
       setMessages(prev => [...prev, auralisResponse]);
     }
     setIsLoading(false);
-    // Refocus the input field after processing is complete
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    // Refocus the input field after processing is complete.
+    // Use setTimeout to ensure focus happens after the current render cycle and the input is enabled.
+    setTimeout(() => {
+      if (inputRef.current && !inputRef.current.disabled) {
+        inputRef.current.focus();
+      }
+    }, 0);
   };
   
   const initialMessage = messages.length === 1 && messages[0].sender === 'system' && messages[0].id === 'auralis-intro';
@@ -178,3 +181,4 @@ export function ChatWindow() {
   );
 }
 
+    

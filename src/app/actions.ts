@@ -1,3 +1,4 @@
+
 // src/app/actions.ts
 "use server";
 
@@ -29,10 +30,10 @@ export async function handleUserMessageAction(
     // 2. Prepare memory data to be saved
     const memoryToSave: Omit<AuralisMemory, "id" | "f_timestamp"> = {
       f_type: "episodic",
-      f_content: userInput, // The user's message that triggered this memory
-      f_reflection: reflection,
-      f_emotion: emotion.toLowerCase(), // As per script.js
-      f_importance: importance,
+      f_content: userInput, // userInput is guaranteed to be non-empty by ChatWindow.tsx
+      f_reflection: reflection || "Nenhuma reflexão específica.", // Ensure non-empty string
+      f_emotion: (emotion || "neutralidade").toLowerCase(), // Ensure non-empty string, then lowercase
+      f_importance: importance, // This is already a validated integer
     };
 
     // 3. Save the memory to Auralis backend
@@ -55,3 +56,4 @@ export async function handleUserMessageAction(
     return { error: "An unexpected error occurred. Please try again." };
   }
 }
+

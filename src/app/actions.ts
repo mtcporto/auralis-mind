@@ -19,6 +19,7 @@ export async function handleUserMessageAction(
   try {
     // 1. Call the Genkit flow to get Auralis's response and thoughts
     const flowOutput = await generateAuralisResponse({ userMessage: userInput });
+    console.log(">>>> [actions.ts] AI Flow Output:", JSON.stringify(flowOutput, null, 2));
 
     if (!flowOutput || !flowOutput.response) {
       console.error("AI flow did not return a valid response:", flowOutput);
@@ -35,6 +36,8 @@ export async function handleUserMessageAction(
       f_emotion: (emotion || "neutralidade").toLowerCase(), // Ensure non-empty string, then lowercase
       f_importance: importance, // This is already a validated integer
     };
+
+    console.log(">>>> [actions.ts] Memory to Save to API:", JSON.stringify(memoryToSave, null, 2));
 
     // 3. Save the memory to Auralis backend
     try {

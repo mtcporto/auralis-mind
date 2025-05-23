@@ -94,7 +94,7 @@ Nenhuma memória recente registrada.
 
 Mensagem do usuário: {{{userMessage}}}
 
-Responda a mensagem do usuário. Gere também uma reflexão sobre a interação, uma emoção associada (EM PORTUGUÊS, escolhendo da lista: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse), e uma pontuação de importância (um NÚMERO INTEIRO de 1 a 10).
+Responda a mensagem do usuário. Em sua resposta, você pode usar formatação Markdown (como **negrito**, *itálico*, listas, e blocos de código para exemplos de código como \`\`\`javascript ...código... \`\`\`) quando apropriado para melhorar a clareza e legibilidade. Gere também uma reflexão sobre a interação, uma emoção associada (EM PORTUGUÊS, escolhendo da lista: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse), e uma pontuação de importância (um NÚMERO INTEIRO de 1 a 10).
 A sua saída DEVE ser um objeto JSON que corresponda ao schema fornecido.
 `,
 });
@@ -156,3 +156,4 @@ const generateAuralisResponseFlow = ai.defineFlow(
     }
   }
 );
+

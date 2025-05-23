@@ -1,13 +1,70 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ChatMessage } from '@/types/auralis';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { User, Bot, Brain, Heart, TrendingUp, MessageSquare } from 'lucide-react';
+import { User, Bot, Brain, Heart, TrendingUp, MessageSquare, Copy, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useTheme } from 'next-themes';
+import { useToast } from '@/hooks/use-toast';
 
 interface MessageBubbleProps {
   message: ChatMessage;
 }
+
+const CodeBlock = ({ node, inline, className, children, ...props }: any) => {
+  const { toast } = useToast();
+  const { resolvedTheme } = useTheme();
+  const [copied, setCopied] = useState(false);
+  
+  const match = /language-(\w+)/.exec(className || '');
+  const codeString = String(children).replace(/\n$/, '');
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(codeString).then(() => {
+      setCopied(true);
+      toast({ title: "Copiado!", description: "O código foi copiado para a área de transferência." });
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(err => {
+      console.error('Falha ao copiar: ', err);
+      toast({ title: "Erro ao copiar", description: "Não foi possível copiar o código.", variant: "destructive" });
+    });
+  };
+
+  const syntaxTheme = resolvedTheme === 'dark' ? oneDark : oneLight;
+
+  return !inline && match ? (
+    <div className="relative group my-2 text-sm">
+      <SyntaxHighlighter
+        style={syntaxTheme}
+        language={match[1]}
+        PreTag="div"
+        {...props}
+        className="!bg-background/30 rounded-md border" // Use ! to ensure background override if needed, adjust as per theme look
+        customStyle={{ margin: 0, padding: '1rem', whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}
+        codeTagProps={{ style: { fontFamily: "var(--font-mono)" } }} // Use mono font
+      >
+        {codeString}
+      </SyntaxHighlighter>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity bg-muted hover:bg-muted/80"
+        onClick={handleCopy}
+        aria-label="Copiar código"
+      >
+        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+      </Button>
+    </div>
+  ) : (
+    <code className={cn(className, "bg-muted/50 text-foreground px-1 py-0.5 rounded-sm font-mono text-[0.9em]")} {...props}>
+      {children}
+    </code>
+  );
+};
+
 
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.sender === 'user';
@@ -37,7 +94,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               <div className="prose prose-sm dark:prose-invert max-w-none message-text break-words">
                  <ReactMarkdown
                     components={{
-                      p: ({node, ...props}) => <p className="mb-0" {...props} />, // Remove default bottom margin for p in markdown
+                      p: ({node, ...props}) => <p className="mb-1 last:mb-0" {...props} />,
+                      code: CodeBlock,
+                      // You can add more custom renderers here if needed for other markdown elements
+                      // For example, to ensure links open in new tabs:
+                      // a: ({node, ...props}) => <a target="_blank" rel="noopener noreferrer" {...props} />
                     }}
                  >
                     {message.text}

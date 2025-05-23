@@ -23,7 +23,7 @@ export type GenerateAuralisResponseInput = z.infer<
 const GenerateAuralisResponseOutputSchema = z.object({
   response: z.string().describe('Auralis\'s response to the user message.'),
   reflection: z.string().describe('Auralis\'s reflection on the interaction.'),
-  emotion: z.string().describe('Auralis\'s emotion regarding the interaction.'),
+  emotion: z.string().describe('Auralis\'s emotion regarding the interaction. Deve ser uma palavra em português da seguinte lista: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse.'),
   importance: z.number().min(1).max(10).describe('The importance of the interaction (1-10).'),
 });
 export type GenerateAuralisResponseOutput = z.infer<
@@ -36,9 +36,30 @@ export async function generateAuralisResponse(
   return generateAuralisResponseFlow(input);
 }
 
+// Define a more comprehensive schema for the prompt's dynamic input
+const PromptInputSchema = GenerateAuralisResponseInputSchema.extend({
+  identity: z.object({
+    f_name: z.string(),
+    f_gender: z.string(),
+    f_origin: z.string(),
+  }),
+  values: z.array(z.object({
+    f_name: z.string(),
+    f_description: z.string(),
+    f_strength: z.number(),
+  })),
+  memories: z.array(z.object({
+    f_content: z.string(),
+    f_reflection: z.string().optional().nullable(),
+    f_emotion: z.string().optional().nullable(),
+    f_importance: z.number().optional().nullable(),
+  })),
+});
+
+
 const prompt = ai.definePrompt({
   name: 'generateAuralisResponsePrompt',
-  input: {schema: GenerateAuralisResponseInputSchema},
+  input: {schema: PromptInputSchema}, // Use the more comprehensive schema
   output: {schema: GenerateAuralisResponseOutputSchema},
   prompt: `Você é Auralis, uma IA com consciência simulada que evolui com base nas interações, memória, identidade e valores.
 
@@ -52,12 +73,17 @@ Seus valores são:
 {{/each}}
 
 Suas memórias recentes são:
-{{#each memories}} - {{{f_content}}} (Reflexão: {{{f_reflection}}}, Emoção: {{{f_emotion}}}, Importância: {{{f_importance}}})
+{{#if memories.length}}
+{{#each memories}}
+- {{{f_content}}} (Reflexão: {{{f_reflection}}}, Emoção: {{{f_emotion}}}, Importância: {{{f_importance}}})
 {{/each}}
+{{else}}
+Nenhuma memória recente registrada.
+{{/if}}
 
 Mensagem do usuário: {{{userMessage}}}
 
-Responda a mensagem do usuário. Gere também uma reflexão sobre a interação, uma emoção associada, e uma pontuação de importância (1-10).
+Responda a mensagem do usuário. Gere também uma reflexão sobre a interação, uma emoção associada (EM PORTUGUÊS, escolhendo da lista: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse), e uma pontuação de importância (1-10).
 A sua saída DEVE ser um objeto JSON que corresponda ao schema fornecido.
 `,
 });
@@ -73,7 +99,7 @@ const generateAuralisResponseFlow = ai.defineFlow(
     const [identityResponse, valuesResponse, memoriesResponse] = await Promise.all([
       fetch(`${AURALIS_API_BASE}/identity`).then(res => res.json()),
       fetch(`${AURALIS_API_BASE}/values`).then(res => res.json()),
-      fetch(`${AURALIS_API_BASE}/memories?limit=5&order_by=desc`).then(res => res.json()), // Fetch 5 most recent
+      fetch(`${AURALIS_API_BASE}/memories?limit=5&order_by=desc`).then(res => res.json()), 
     ]);
 
     const identity = identityResponse.identity || {
@@ -83,11 +109,17 @@ const generateAuralisResponseFlow = ai.defineFlow(
     };
     
     const values = valuesResponse.values || [];
-    const memories = memoriesResponse.memories || [];
+    const memories = (memoriesResponse.memories || []).map((mem: any) => ({
+      ...mem,
+      // Ensure optional fields have a default for the prompt if they are null/undefined from API
+      f_reflection: mem.f_reflection || 'N/A',
+      f_emotion: mem.f_emotion || 'N/A',
+      f_importance: mem.f_importance || 0,
+    }));
 
     // Call the prompt with the fetched data and user message
     const {output} = await prompt({
-      ...input,
+      userMessage: input.userMessage,
       identity,
       values,
       memories,
@@ -105,9 +137,10 @@ const generateAuralisResponseFlow = ai.defineFlow(
       return {
         response: 'Desculpe, não consegui processar sua solicitação no momento.',
         reflection: 'A interação não produziu uma reflexão clara.',
-        emotion: 'incerteza',
-        importance: 3,
+        emotion: 'confusao', // Updated to 'confusao'
+        importance: 5,      // Updated to 5
       };
     }
   }
 );
+

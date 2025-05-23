@@ -28,37 +28,27 @@ export function ChatWindow() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null); // Ref for the input field
+  const inputRef = useRef<HTMLInputElement>(null); 
 
-  // Store the previous value of isLoading to detect transitions
   const prevIsLoading = useRef<boolean | undefined>(undefined);
 
   useEffect(() => {
-    // This effect runs after every render.
-    // `prevIsLoading.current` holds the `isLoading` value from the *previous* render cycle's end.
-    // The *current* `isLoading` value is from the current render cycle.
-
     const justFinishedLoading = prevIsLoading.current === true && isLoading === false;
     const isInitialLoadWithIntro = 
-      prevIsLoading.current === undefined && // Ensures this only runs on the "first" applicable effect execution
+      prevIsLoading.current === undefined && 
       !isLoading &&
       messages.length === 1 &&
       messages[0].id === 'auralis-intro';
 
     if (inputRef.current) {
       if (justFinishedLoading) {
-        // Focus after Auralis has responded and loading is complete
         inputRef.current.focus();
       } else if (isInitialLoadWithIntro) {
-        // Initial focus on the very first load with the intro message
         inputRef.current.focus();
       }
     }
-
-    // Update prevIsLoading for the next render cycle's effect phase
     prevIsLoading.current = isLoading;
-
-  }, [isLoading, messages]); // Rerun when isLoading or messages change.
+  }, [isLoading, messages]);
 
 
   const scrollToBottom = () => {
@@ -89,18 +79,22 @@ export function ChatWindow() {
     setUserInput('');
     setIsLoading(true);
 
+    // Adiciona a mensagem de "digitando"
     const typingIndicatorId = crypto.randomUUID();
     const typingMessage: ChatMessage = {
       id: typingIndicatorId,
       sender: 'auralis',
-      text: '...', 
+      text: '...', // Ou "Auralis está digitando..."
       timestamp: new Date(),
+      isTypingIndicator: true, // Flag opcional para estilização
     };
     setMessages(prev => [...prev, typingMessage]);
+    scrollToBottom(); // Garante que a mensagem de "digitando" seja visível
 
 
     const result = await handleUserMessageAction(trimmedInput);
     
+    // Remove a mensagem de "digitando"
     setMessages(prev => prev.filter(msg => msg.id !== typingIndicatorId));
 
 
@@ -133,7 +127,6 @@ export function ChatWindow() {
       setMessages(prev => [...prev, auralisResponse]);
     }
     setIsLoading(false);
-    // The useEffect hook above will now handle refocusing.
   };
   
   const initialMessageDisplay = messages.length === 1 && messages[0].id === 'auralis-intro';
@@ -177,7 +170,7 @@ export function ChatWindow() {
       <div className="p-4 border-t bg-card">
         <form onSubmit={handleSubmit} className="flex items-center space-x-2">
           <Input
-            ref={inputRef} // Assign the ref to the input
+            ref={inputRef} 
             type="text"
             placeholder="Digite sua mensagem para Auralis..."
             value={userInput}
@@ -195,4 +188,3 @@ export function ChatWindow() {
     </div>
   );
 }
-    

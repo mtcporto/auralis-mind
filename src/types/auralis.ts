@@ -16,15 +16,14 @@ export interface AuralisIdentityResponse {
 
 export interface AuralisMemory {
   id?: number;
-  f_timestamp?: string; // Assuming timestamp is a string like "YYYY-MM-DD HH:MM:SS"
-  f_type: string; // "episodic"
+  f_timestamp?: string; 
+  f_type: string; 
   f_content: string;
   f_reflection: string;
   f_emotion: string;
-  f_importance: number; // 1-10
+  f_importance: number; 
 }
 
-// Payload for POSTing a new memory - keys match Python backend expectations
 export interface AuralisMemoryPostPayload {
   type: string;
   content: string;
@@ -41,7 +40,7 @@ export interface AuralisValue {
   id?: number;
   f_name: string;
   f_description: string;
-  f_strength: number; // 1-10
+  f_strength: number; 
 }
 
 export interface AuralisValuesResponse {
@@ -50,7 +49,7 @@ export interface AuralisValuesResponse {
 
 export interface AuralisDailyIdea {
   id?: number;
-  f_date: string; // "YYYY-MM-DD"
+  f_date: string; 
   f_idea: string;
 }
 
@@ -60,10 +59,10 @@ export interface AuralisDailyIdeasResponse {
 
 export interface AuralisMemorySegment {
   id?: number;
-  f_segment_type: "short_term" | "medium_term" | "long_term" | string; // Allow string for robustness before normalization
+  f_segment_type: "short_term" | "medium_term" | "long_term" | string; 
   f_content: string;
   f_importance: number;
-  f_associated_emotion: string; // Corrected from f_emotion based on Python controller
+  f_associated_emotion: string; 
   f_timestamp?: string;
 }
 
@@ -92,4 +91,5 @@ export interface ChatMessage {
     emotion: string;
     importance: number;
   };
+  isTypingIndicator?: boolean; // Optional flag for typing indicator messages
 }

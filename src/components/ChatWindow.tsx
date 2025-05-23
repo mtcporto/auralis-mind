@@ -30,38 +30,35 @@ export function ChatWindow() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null); // Ref for the input field
 
-  // useRef to store the previous value of isLoading
-  const prevIsLoadingRef = useRef<boolean>();
-
-  // This effect runs after every render to update prevIsLoadingRef.current
-  // It will store the value of isLoading from the *previous* render
-  // when the main focus effect (below) runs.
-  useEffect(() => {
-    prevIsLoadingRef.current = isLoading;
-  }, [isLoading]); // Only run when isLoading itself changes
+  // Store the previous value of isLoading to detect transitions
+  const prevIsLoading = useRef<boolean | undefined>(undefined);
 
   useEffect(() => {
-    // Case 1: Initial load with the intro message.
-    // Focus if not loading and it's the very first message.
-    if (
+    // This effect runs after every render.
+    // `prevIsLoading.current` holds the `isLoading` value from the *previous* render cycle's end.
+    // The *current* `isLoading` value is from the current render cycle.
+
+    const justFinishedLoading = prevIsLoading.current === true && isLoading === false;
+    const isInitialLoadWithIntro = 
+      prevIsLoading.current === undefined && // Ensures this only runs on the "first" applicable effect execution
+      !isLoading &&
       messages.length === 1 &&
-      messages[0].id === 'auralis-intro' &&
-      inputRef.current &&
-      !isLoading // Ensure not loading, though usually false at this stage
-    ) {
-      inputRef.current.focus();
+      messages[0].id === 'auralis-intro';
+
+    if (inputRef.current) {
+      if (justFinishedLoading) {
+        // Focus after Auralis has responded and loading is complete
+        inputRef.current.focus();
+      } else if (isInitialLoadWithIntro) {
+        // Initial focus on the very first load with the intro message
+        inputRef.current.focus();
+      }
     }
-    // Case 2: After a user submission and Auralis's response.
-    // Focus if isLoading just transitioned from true to false.
-    else if (
-      prevIsLoadingRef.current === true && // Was loading in the previous render
-      !isLoading &&                       // Is not loading in the current render
-      inputRef.current                    // And the input element exists
-    ) {
-      inputRef.current.focus();
-    }
-  }, [isLoading, messages]); // Re-evaluate when isLoading or messages change.
-                              // `messages` is included because Case 1 depends on it.
+
+    // Update prevIsLoading for the next render cycle's effect phase
+    prevIsLoading.current = isLoading;
+
+  }, [isLoading, messages]); // Rerun when isLoading or messages change.
 
 
   const scrollToBottom = () => {
@@ -139,7 +136,7 @@ export function ChatWindow() {
     // The useEffect hook above will now handle refocusing.
   };
   
-  const initialMessage = messages.length === 1 && messages[0].sender === 'system' && messages[0].id === 'auralis-intro';
+  const initialMessageDisplay = messages.length === 1 && messages[0].id === 'auralis-intro';
 
   return (
     <div className="flex flex-col h-full bg-background rounded-xl shadow-2xl overflow-hidden">
@@ -158,7 +155,7 @@ export function ChatWindow() {
       </header>
       
       <ScrollArea ref={scrollAreaRef} className="flex-grow p-4 chat-output-scrollbar">
-        {initialMessage && (
+        {initialMessageDisplay && (
           <div className="flex flex-col items-center justify-center text-center h-full p-8 text-muted-foreground">
             <Image 
               src="https://placehold.co/100x100/A084CA/F4F0F9.png?text=A" 
@@ -174,7 +171,7 @@ export function ChatWindow() {
             </p>
           </div>
         )}
-        {!initialMessage && messages.map(msg => msg.sender !== 'system' && <MessageBubble key={msg.id} message={msg} />)}
+        {!initialMessageDisplay && messages.map(msg => msg.sender !== 'system' && <MessageBubble key={msg.id} message={msg} />)}
       </ScrollArea>
 
       <div className="p-4 border-t bg-card">

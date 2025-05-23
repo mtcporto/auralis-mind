@@ -30,6 +30,40 @@ export function ChatWindow() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null); // Ref for the input field
 
+  // useRef to store the previous value of isLoading
+  const prevIsLoadingRef = useRef<boolean>();
+
+  // This effect runs after every render to update prevIsLoadingRef.current
+  // It will store the value of isLoading from the *previous* render
+  // when the main focus effect (below) runs.
+  useEffect(() => {
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading]); // Only run when isLoading itself changes
+
+  useEffect(() => {
+    // Case 1: Initial load with the intro message.
+    // Focus if not loading and it's the very first message.
+    if (
+      messages.length === 1 &&
+      messages[0].id === 'auralis-intro' &&
+      inputRef.current &&
+      !isLoading // Ensure not loading, though usually false at this stage
+    ) {
+      inputRef.current.focus();
+    }
+    // Case 2: After a user submission and Auralis's response.
+    // Focus if isLoading just transitioned from true to false.
+    else if (
+      prevIsLoadingRef.current === true && // Was loading in the previous render
+      !isLoading &&                       // Is not loading in the current render
+      inputRef.current                    // And the input element exists
+    ) {
+      inputRef.current.focus();
+    }
+  }, [isLoading, messages]); // Re-evaluate when isLoading or messages change.
+                              // `messages` is included because Case 1 depends on it.
+
+
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
       const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
@@ -41,13 +75,6 @@ export function ChatWindow() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
-
-  // Effect to focus input when component mounts, if it's the initial message state
-  useEffect(() => {
-    if (messages.length === 1 && messages[0].id === 'auralis-intro' && inputRef.current) {
-      inputRef.current.focus();
-    }
   }, [messages]);
   
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
@@ -65,12 +92,11 @@ export function ChatWindow() {
     setUserInput('');
     setIsLoading(true);
 
-    // Add a temporary typing indicator for Auralis
     const typingIndicatorId = crypto.randomUUID();
     const typingMessage: ChatMessage = {
       id: typingIndicatorId,
       sender: 'auralis',
-      text: '...', // Placeholder, will be replaced or removed
+      text: '...', 
       timestamp: new Date(),
     };
     setMessages(prev => [...prev, typingMessage]);
@@ -78,7 +104,6 @@ export function ChatWindow() {
 
     const result = await handleUserMessageAction(trimmedInput);
     
-    // Remove typing indicator
     setMessages(prev => prev.filter(msg => msg.id !== typingIndicatorId));
 
 
@@ -88,7 +113,6 @@ export function ChatWindow() {
         description: result.error,
         variant: "destructive",
       });
-      // Optionally add an error message to chat
       const errorMessage: ChatMessage = {
         id: crypto.randomUUID(),
         sender: 'system',
@@ -112,13 +136,7 @@ export function ChatWindow() {
       setMessages(prev => [...prev, auralisResponse]);
     }
     setIsLoading(false);
-    // Refocus the input field after processing is complete.
-    // Use setTimeout to ensure focus happens after the current render cycle and the input is enabled.
-    setTimeout(() => {
-      if (inputRef.current && !inputRef.current.disabled) {
-        inputRef.current.focus();
-      }
-    }, 0);
+    // The useEffect hook above will now handle refocusing.
   };
   
   const initialMessage = messages.length === 1 && messages[0].sender === 'system' && messages[0].id === 'auralis-intro';
@@ -180,5 +198,4 @@ export function ChatWindow() {
     </div>
   );
 }
-
     

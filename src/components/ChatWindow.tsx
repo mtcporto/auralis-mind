@@ -9,7 +9,7 @@ import { MessageBubble } from '@/components/MessageBubble';
 import type { ChatMessage } from '@/types/auralis';
 import { handleUserMessageAction } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
-import { SendHorizonal, Loader2, Sparkles, MessageCircle } from 'lucide-react';
+import { SendHorizonal, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 const initialMessages: ChatMessage[] = [
@@ -28,6 +28,7 @@ export function ChatWindow() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null); // Ref for the input field
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -40,6 +41,13 @@ export function ChatWindow() {
 
   useEffect(() => {
     scrollToBottom();
+  }, [messages]);
+
+  // Effect to focus input when component mounts, if it's the initial message state
+  useEffect(() => {
+    if (messages.length === 1 && messages[0].id === 'auralis-intro' && inputRef.current) {
+      inputRef.current.focus();
+    }
   }, [messages]);
   
   const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
@@ -104,6 +112,10 @@ export function ChatWindow() {
       setMessages(prev => [...prev, auralisResponse]);
     }
     setIsLoading(false);
+    // Refocus the input field after processing is complete
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
   };
   
   const initialMessage = messages.length === 1 && messages[0].sender === 'system' && messages[0].id === 'auralis-intro';
@@ -147,6 +159,7 @@ export function ChatWindow() {
       <div className="p-4 border-t bg-card">
         <form onSubmit={handleSubmit} className="flex items-center space-x-2">
           <Input
+            ref={inputRef} // Assign the ref to the input
             type="text"
             placeholder="Digite sua mensagem para Auralis..."
             value={userInput}
@@ -164,3 +177,4 @@ export function ChatWindow() {
     </div>
   );
 }
+

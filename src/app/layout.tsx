@@ -1,18 +1,12 @@
 import type {Metadata} from 'next';
-import { GeistSans as Geist, GeistMono } from 'next/font/google';
+import { GeistSans } from 'geist/sans';
+import { GeistMono } from 'geist/mono';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = GeistMono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+// The GeistSans and GeistMono objects from the 'geist' package directly provide .variable properties.
+// No need to call them as functions like with next/font/google.
 
 export const metadata: Metadata = {
   title: 'Auralis Mind',
@@ -26,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

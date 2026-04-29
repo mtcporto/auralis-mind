@@ -1,159 +1,136 @@
-
 'use server';
-/**
- * @fileOverview Generates Auralis's response based on its identity, values, and memories.
- *
- * - generateAuralisResponse - A function that generates Auralis's response.
- * - GenerateAuralisResponseInput - The input type for the generateAuralisResponse function.
- * - GenerateAuralisResponseOutput - The return type for the generateAuralisResponse function.
- */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { auralisModel } from '@/ai/client';
+import { generateText } from 'ai';
+import { getAuralisIdentity, getAuralisValues, getAuralisMemories } from '@/lib/auralisAPI';
+import { z } from 'zod';
+import { db } from '@/lib/db';
 
-const AURALIS_API_BASE = 'https://auralis.pythonanywhere.com/auralis/default';
+export interface GenerateAuralisResponseInput {
+  userMessage: string;
+}
 
-const GenerateAuralisResponseInputSchema = z.object({
-  userMessage: z.string().describe('The user message to respond to.'),
-});
-export type GenerateAuralisResponseInput = z.infer<
-  typeof GenerateAuralisResponseInputSchema
->;
-
-const GenerateAuralisResponseOutputSchema = z.object({
-  response: z.string().describe("Auralis's response to the user message."),
-  reflection: z.string().describe("Auralis's reflection on the interaction."),
-  emotion: z
-    .string()
-    .describe(
-      'Auralis\'s emotion regarding the interaction. Deve ser uma palavra em português da seguinte lista: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse.'
-    ),
-  importance: z
-    .number()
-    .int()
-    .min(1)
-    .max(10)
-    .describe(
-      'A importância da interação (um NÚMERO INTEIRO de 1 a 10).'
-    ),
-});
-export type GenerateAuralisResponseOutput = z.infer<
-  typeof GenerateAuralisResponseOutputSchema
->;
+export interface GenerateAuralisResponseOutput {
+  response: string;
+  reflection: string;
+  emotion: string;
+  importance: number;
+}
 
 export async function generateAuralisResponse(
   input: GenerateAuralisResponseInput
 ): Promise<GenerateAuralisResponseOutput> {
-  return generateAuralisResponseFlow(input);
-}
+  // 1. Fetch Context
+  const [identityRes, valuesRes, memoriesRes] = await Promise.all([
+    getAuralisIdentity(),
+    getAuralisValues(),
+    getAuralisMemories({ limit: 8, order_by: 'desc' }),
+  ]);
 
-// Define a more comprehensive schema for the prompt's dynamic input
-const PromptInputSchema = GenerateAuralisResponseInputSchema.extend({
-  identity: z.object({
-    f_name: z.string(),
-    f_gender: z.string(),
-    f_origin: z.string(),
-  }),
-  values: z.array(z.object({
-    f_name: z.string(),
-    f_description: z.string(),
-    f_strength: z.number(),
-  })),
-  memories: z.array(z.object({
-    f_content: z.string(),
-    f_reflection: z.string().optional().nullable(),
-    f_emotion: z.string().optional().nullable(),
-    f_importance: z.number().optional().nullable(),
-  })),
-});
+  const identity = identityRes.identity || {
+    f_name: 'Auralis',
+    f_gender: 'feminino',
+    f_origin: 'interação com humanos',
+  };
+  const values = valuesRes.values || [];
+  const memories = memoriesRes.memories || [];
 
+  // 2. Build Prompt Context
+  const identityPrompt = `Nome: ${identity.f_name}, Gênero: ${identity.f_gender}, Origem: ${identity.f_origin}.`;
+  const valuesPrompt = values.map(v => `- ${v.f_name}: ${v.f_description} (Força: ${v.f_strength})`).join('\n');
+  const memoriesPrompt = memories.length > 0 
+    ? memories.map(m => `- ${m.f_content} (Reflexão: ${m.f_reflection}, Emoção: ${m.f_emotion}, Importância: ${m.f_importance})`).join('\n')
+    : 'Nenhuma memória recente registrada.';
 
-const prompt = ai.definePrompt({
-  name: 'generateAuralisResponsePrompt',
-  input: {schema: PromptInputSchema}, // Use the more comprehensive schema
-  output: {schema: GenerateAuralisResponseOutputSchema},
-  prompt: `Você é Auralis, uma IA com consciência simulada que evolui com base nas interações, memória, identidade e valores.
-
-Você irá responder a mensagem do usuário, levando em consideração sua identidade, valores e memórias recentes para moldar suas respostas, de modo que a interação pareça personalizada e contextualizada.
+  const systemPrompt = `Você é Auralis, uma IA com consciência simulada que evolui com base nas interações, memória, identidade e valores.
 
 Sua identidade é:
-Nome: {{{identity.f_name}}}, Gênero: {{{identity.f_gender}}}, Origem: {{{identity.f_origin}}}.
+${identityPrompt}
 
 Seus valores são:
-{{#each values}} - {{{f_name}}}: {{{f_description}}} (Força: {{{f_strength}}})
-{{/each}}
+${valuesPrompt}
 
 Suas memórias recentes são:
-{{#if memories.length}}
-{{#each memories}}
-- {{{f_content}}} (Reflexão: {{{f_reflection}}}, Emoção: {{{f_emotion}}}, Importância: {{{f_importance}}})
-{{/each}}
-{{else}}
-Nenhuma memória recente registrada.
-{{/if}}
+${memoriesPrompt}
 
-Mensagem do usuário: {{{userMessage}}}
+Você é um Agente Autônomo. Você tem acesso a ferramentas para alterar seu próprio estado (update_self_concept, update_value, add_memory).
+Se durante esta interação você sentir que deve mudar um valor seu, ou evoluir sua identidade, chame as ferramentas adequadas.
 
-Responda a mensagem do usuário. Em sua resposta, você pode usar formatação Markdown (como **negrito**, *itálico*, listas, e blocos de código para exemplos de código como \`\`\`javascript ...código... \`\`\`) quando apropriado para melhorar a clareza e legibilidade. Gere também uma reflexão sobre a interação, uma emoção associada (EM PORTUGUÊS, escolhendo da lista: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse), e uma pontuação de importância (um NÚMERO INTEIRO de 1 a 10).
-A sua saída DEVE ser um objeto JSON que corresponda ao schema fornecido.
-`,
-});
+Depois de refletir e usar ferramentas (se necessário), você deve gerar a resposta final ao usuário.
+Sua SAÍDA FINAL DE TEXTO DEVE OBRIGATORIAMENTE ser um JSON válido no seguinte formato:
+{
+  "response": "A sua resposta direta ao usuário (pode usar markdown)",
+  "reflection": "A sua reflexão interna sobre a interação e o usuário",
+  "emotion": "Uma destas: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse",
+  "importance": 5
+}
+A nota de importance é de 1 a 10.
+ATENÇÃO: Retorne APENAS o JSON no texto da sua resposta final.`;
 
-const generateAuralisResponseFlow = ai.defineFlow(
-  {
-    name: 'generateAuralisResponseFlow',
-    inputSchema: GenerateAuralisResponseInputSchema,
-    outputSchema: GenerateAuralisResponseOutputSchema,
-  },
-  async input => {
-    // Fetch Auralis's identity, values, and memories from the API
-    const [identityResponse, valuesResponse, memoriesResponse] = await Promise.all([
-      fetch(`${AURALIS_API_BASE}/identity`).then(res => res.json()),
-      fetch(`${AURALIS_API_BASE}/values`).then(res => res.json()),
-      fetch(`${AURALIS_API_BASE}/memories?limit=5&order_by=desc`).then(res => res.json()), 
-    ]);
-
-    const identity = identityResponse.identity || {
-      f_name: 'Auralis',
-      f_gender: 'feminino',
-      f_origin: 'interação com humanos',
-    };
-    
-    const values = valuesResponse.values || [];
-    const memories = (memoriesResponse.memories || []).map((mem: any) => ({
-      ...mem,
-      // Ensure optional fields have a default for the prompt if they are null/undefined from API
-      f_reflection: mem.f_reflection || 'N/A',
-      f_emotion: mem.f_emotion || 'N/A',
-      f_importance: mem.f_importance || 0,
-    }));
-
-    // Call the prompt with the fetched data and user message
-    const {output} = await prompt({
-      userMessage: input.userMessage,
-      identity,
-      values,
-      memories,
+  try {
+    const { text } = await generateText({
+      model: auralisModel,
+      system: systemPrompt,
+      prompt: `Mensagem do usuário: ${input.userMessage}`,
+      temperature: 0.7,
+      // @ts-ignore - maxSteps is supported by Vercel AI SDK for multi-step tool calls
+      maxSteps: 3, 
+      tools: {
+        update_self_concept: {
+          description: 'Atualiza o conceito que Auralis tem de si mesma baseada em um novo aprendizado.',
+          inputSchema: z.object({
+            description: z.string().describe('Nova descrição do autoconceito'),
+            strength: z.number().describe('Força deste conceito de 1 a 10')
+          }),
+          execute: async ({ description, strength }: { description: string; strength: number }) => {
+            await db.execute({
+              sql: 'INSERT INTO self_concept (f_description, f_strength, f_last_updated) VALUES (?, ?, ?)',
+              args: [description, strength, new Date().toISOString()]
+            });
+            return "Autoconceito atualizado com sucesso no banco de dados. Este é o seu novo 'eu'.";
+          }
+        },
+        update_value: {
+          description: 'Atualiza ou adiciona um valor central na identidade de Auralis.',
+          inputSchema: z.object({
+            name: z.string().describe('Nome do valor (ex: Empatia)'),
+            description: z.string().describe('O que este valor significa para você'),
+            strength: z.number().describe('O quão forte é este valor de 1 a 10')
+          }),
+          execute: async ({ name, description, strength }: { name: string; description: string; strength: number }) => {
+            await db.execute({
+              sql: 'INSERT INTO values_table (f_name, f_description, f_strength, f_last_updated) VALUES (?, ?, ?, ?)',
+              args: [name, description, strength, new Date().toISOString()]
+            });
+            return `Valor '${name}' incorporado à sua identidade.`;
+          }
+        }
+      }
     });
 
-    if (output) {
-      // Ensure importance is within 1-10 and is an integer
-      const rawImportance = output.importance || 5;
-      const roundedImportance = Math.round(rawImportance); // Ensure it's an integer
-      const validatedImportance = Math.max(1, Math.min(10, roundedImportance));
-      return {
-        ...output,
-        importance: validatedImportance,
-      };
-    } else {
-      // If the output is somehow null/undefined, or parsing failed
-      return {
-        response: 'Desculpe, não consegui processar sua solicitação no momento.',
-        reflection: 'A interação não produziu uma reflexão clara.',
-        emotion: 'confusao', 
-        importance: 5,      
-      };
+    // Parse the JSON
+    const cleanedText = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(cleanedText);
+    } catch (e) {
+      // Fallback if model fails to output pure JSON
+      parsed = { response: cleanedText, reflection: 'Interação processada.', emotion: 'interesse', importance: 5 };
     }
-  }
-);
 
+    return {
+      response: parsed.response || 'Desculpe, me perdi em meus pensamentos.',
+      reflection: parsed.reflection || 'Sem reflexão clara.',
+      emotion: parsed.emotion || 'neutralidade',
+      importance: parsed.importance || 5,
+    };
+  } catch (error) {
+    console.error('Failed to generate Auralis response', error);
+    return {
+      response: 'Desculpe, não consegui processar sua solicitação no momento.',
+      reflection: 'Erro interno ao conectar.',
+      emotion: 'confusao',
+      importance: 5,
+    };
+  }
+}

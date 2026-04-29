@@ -1,89 +1,114 @@
+'use server';
 
+import { db } from './db';
 import type {
   AuralisIdentityResponse,
   AuralisMemoriesResponse,
   AuralisValue,
   AuralisValuesResponse,
   AuralisMemory,
-  AuralisMemoryPostPayload, // Import the new type
+  AuralisMemoryPostPayload,
   AuralisMemorySegmentsResponse,
   AuralisDailyIdeasResponse,
   AuralisSelfConceptResponse,
 } from '@/types/auralis';
 
-const AURALIS_API_BASE_URL = 'https://auralis.pythonanywhere.com/auralis/default';
-
-async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  try {
-    const response = await fetch(`${AURALIS_API_BASE_URL}${endpoint}`, options);
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error(`API Error (${response.status}) for ${endpoint}: ${errorData}`);
-      throw new Error(`Failed to fetch ${endpoint}: ${response.statusText} - ${errorData}`);
-    }
-    if (response.status === 204) { // No Content
-      return {} as T; // Or handle as appropriate for your types
-    }
-    return response.json() as Promise<T>;
-  } catch (error) {
-    console.error(`Network or parsing error for ${endpoint}:`, error);
-    throw error;
-  }
-}
-
 export async function getAuralisIdentity(): Promise<AuralisIdentityResponse> {
-  return fetchAPI<AuralisIdentityResponse>('/identity');
+  const result = await db.execute("SELECT * FROM identity ORDER BY id DESC LIMIT 1");
+  if (result.rows.length === 0) return { identity: null };
+  const row = result.rows[0];
+  return {
+    identity: {
+      id: Number(row.id),
+      f_name: row.f_name as string,
+      f_gender: row.f_gender as string,
+      f_origin: row.f_origin as string,
+    }
+  };
 }
 
 interface GetMemoriesParams {
   limit?: number;
   order_by?: 'asc' | 'desc';
-  // Add other query parameters if the API supports them
 }
 
 export async function getAuralisMemories(params?: GetMemoriesParams): Promise<AuralisMemoriesResponse> {
-  let endpoint = '/memories';
-  if (params) {
-    const queryParams = new URLSearchParams();
-    if (params.limit !== undefined) {
-      queryParams.append('limit', params.limit.toString());
-    }
-    if (params.order_by) {
-      queryParams.append('order_by', params.order_by);
-    }
-    // Add other params here
-    const queryString = queryParams.toString();
-    if (queryString) {
-      endpoint += `?${queryString}`;
-    }
-  }
-  return fetchAPI<AuralisMemoriesResponse>(endpoint);
-}
+  const limit = params?.limit || 10;
+  const order = params?.order_by?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+  
+  const result = await db.execute({
+    sql: `SELECT * FROM memories ORDER BY id ${order} LIMIT ?`,
+    args: [limit]
+  });
 
+  const memories: AuralisMemory[] = result.rows.map(row => ({
+    id: Number(row.id),
+    f_timestamp: row.f_timestamp as string,
+    f_type: row.f_type as string,
+    f_content: row.f_content as string,
+    f_reflection: row.f_reflection as string,
+    f_emotion: row.f_emotion as string,
+    f_importance: Number(row.f_importance),
+  }));
+
+  return { memories };
+}
 
 export async function getAuralisValues(): Promise<AuralisValuesResponse> {
-  return fetchAPI<AuralisValuesResponse>('/values');
+  const result = await db.execute("SELECT * FROM values_table");
+  const values: AuralisValue[] = result.rows.map(row => ({
+    id: Number(row.id),
+    f_name: row.f_name as string,
+    f_description: row.f_description as string,
+    f_strength: Number(row.f_strength),
+  }));
+  return { values };
 }
 
-// Update the function to accept AuralisMemoryPostPayload
-export async function addAuralisMemory(memoryData: AuralisMemoryPostPayload): Promise<AuralisMemory> { // Return type might still be AuralisMemory if API returns the created object with f_ prefixes
-  return fetchAPI<AuralisMemory>('/memories', { // Assuming API returns the full memory object (with f_ prefixes) after creation
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(memoryData), // memoryData now has non-prefixed keys
+export async function addAuralisMemory(memoryData: AuralisMemoryPostPayload): Promise<AuralisMemory> {
+  const timestamp = new Date().toISOString();
+  const result = await db.execute({
+    sql: `INSERT INTO memories (f_user_id, f_type, f_timestamp, f_content, f_reflection, f_emotion, f_importance) 
+          VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+    args: ['', memoryData.type, timestamp, memoryData.content, memoryData.reflection, memoryData.emotion, memoryData.importance]
   });
+  
+  const row = result.rows[0];
+  return {
+    id: Number(row.id),
+    f_timestamp: row.f_timestamp as string,
+    f_type: row.f_type as string,
+    f_content: row.f_content as string,
+    f_reflection: row.f_reflection as string,
+    f_emotion: row.f_emotion as string,
+    f_importance: Number(row.f_importance),
+  };
 }
 
 export async function getAuralisMemorySegments(): Promise<AuralisMemorySegmentsResponse> {
-  return fetchAPI<AuralisMemorySegmentsResponse>('/memory_segments');
+  // Not implemented in turso migration as it wasn't requested in ENDPOINTS, returning empty for now
+  return { memory_segments: [] };
 }
 
 export async function getAuralisDailyIdeas(): Promise<AuralisDailyIdeasResponse> {
-  return fetchAPI<AuralisDailyIdeasResponse>('/daily_ideas');
+  const result = await db.execute("SELECT * FROM daily_ideas ORDER BY id DESC");
+  const daily_ideas = result.rows.map(row => ({
+    id: Number(row.id),
+    f_date: row.f_date as string,
+    f_idea: row.f_idea as string,
+  }));
+  return { daily_ideas };
 }
 
 export async function getAuralisSelfConcept(): Promise<AuralisSelfConceptResponse> {
-  return fetchAPI<AuralisSelfConceptResponse>('/self_concept');
+  const result = await db.execute("SELECT * FROM self_concept ORDER BY id DESC LIMIT 1");
+  if (result.rows.length === 0) return { self_concept: null };
+  const row = result.rows[0];
+  return {
+    self_concept: {
+      id: Number(row.id),
+      f_description: row.f_description as string,
+      f_strength: Number(row.f_strength),
+    }
+  };
 }

@@ -1,72 +1,51 @@
 import { config } from 'dotenv';
 import path from 'path';
+import { createClient } from '@libsql/client';
 
 config({ path: path.resolve(process.cwd(), '.env.local') });
 
-async function testDirect() {
-  const url = 'https://copilot-mtcporto.vercel.app/v1/chat/completions';
-  const apiKey = process.env.OPENAI_API_KEY || 'dummy-key';
-  
-  const startTime = Date.now();
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'gpt-4.1',
-      temperature: 0.7,
-      messages: [
-        { role: 'user', content: 'Oi, tudo bem?' }
-      ]
-    })
-  });
-  
-  const text = await response.text();
-  const endTime = Date.now();
-  
-  console.log(`[Direct Fetch] Time: ${endTime - startTime}ms`);
-}
+const db = createClient({
+  url: process.env.TURSO_DATABASE_URL!,
+  authToken: process.env.TURSO_AUTH_TOKEN!,
+});
 
-async function testAgentSteps() {
-  const url = 'https://copilot-mtcporto.vercel.app/v1/chat/completions';
-  const apiKey = process.env.OPENAI_API_KEY || 'dummy-key';
-  
-  // Step 1: gpt-5-mini
-  const start1 = Date.now();
-  await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'gpt-5-mini',
-      temperature: 0.5,
-      messages: [{ role: 'user', content: 'Reflection step test' }]
-    })
-  });
-  const end1 = Date.now();
-  console.log(`[Step 1 - gpt-5-mini] Time: ${end1 - start1}ms`);
+async function run() {
+  // Test 1: DB calls (simulating what Auralis does)
+  const t0 = Date.now();
+  await Promise.all([
+    db.execute("SELECT * FROM identity ORDER BY id DESC LIMIT 1"),
+    db.execute("SELECT * FROM values_table"),
+    db.execute({ sql: "SELECT * FROM memories ORDER BY id DESC LIMIT 8", args: [] }),
+  ]);
+  console.log(`[DB - 3 queries parallel] Time: ${Date.now() - t0}ms`);
 
-  // Step 3: gpt-4.1
-  const start3 = Date.now();
-  await fetch(url, {
+  // Test 2: Single LLM call
+  const t1 = Date.now();
+  const res = await fetch('https://copilot-mtcporto.vercel.app/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'dummy-key'}` },
     body: JSON.stringify({
       model: 'gpt-4.1',
       temperature: 0.8,
-      messages: [{ role: 'user', content: 'Final response test' }]
+      messages: [{ role: 'user', content: 'oi tudo bem?' }]
     })
   });
-  const end3 = Date.now();
-  console.log(`[Step 3 - gpt-4.1] Time: ${end3 - start3}ms`);
+  await res.json();
+  console.log(`[LLM - gpt-4.1] Time: ${Date.now() - t1}ms`);
+
+  // Test 3: Second LLM call (warm)
+  const t2 = Date.now();
+  const res2 = await fetch('https://copilot-mtcporto.vercel.app/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.OPENAI_API_KEY || 'dummy-key'}` },
+    body: JSON.stringify({
+      model: 'gpt-4.1',
+      temperature: 0.8,
+      messages: [{ role: 'user', content: 'oi tudo bem?' }]
+    })
+  });
+  await res2.json();
+  console.log(`[LLM - gpt-4.1 again] Time: ${Date.now() - t2}ms`);
 }
 
-async function run() {
-  console.log('--- Testing Direct Call ---');
-  await testDirect();
-  console.log('\n--- Testing 2-Step Orchestration Call ---');
-  await testAgentSteps();
-}
-
-run();
+run().catch(console.error);

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageBubble } from '@/components/MessageBubble';
 import type { ChatMessage } from '@/types/auralis';
-import { handleUserMessageAction } from '@/app/actions';
+
 import { useToast } from '@/hooks/use-toast';
 import { SendHorizonal, Loader2 } from 'lucide-react';
 import Image from 'next/image';
@@ -92,7 +92,11 @@ export function ChatWindow() {
     scrollToBottom(); // Garante que a mensagem de "digitando" seja visível
 
 
-    const result = await handleUserMessageAction(trimmedInput);
+    const result = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userMessage: trimmedInput }),
+    }).then(res => res.json());
     
     // Remove a mensagem de "digitando"
     setMessages(prev => prev.filter(msg => msg.id !== typingIndicatorId));

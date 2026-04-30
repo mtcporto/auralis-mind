@@ -15,10 +15,10 @@ export interface GenerateAuralisResponseOutput {
 }
 
 // Wrapper nativo usando fetch sem SDK
-async function callCopilot(model: string, systemPrompt: string, userPrompt: string, temperature = 0.7) {
+async function callCopilot(systemPrompt: string, userPrompt: string, temperature = 0.7) {
   const url = 'https://copilot-mtcporto.vercel.app/v1/chat/completions';
   const apiKey = process.env.OPENAI_API_KEY || 'dummy-key';
-  
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
@@ -26,8 +26,8 @@ async function callCopilot(model: string, systemPrompt: string, userPrompt: stri
       'Authorization': `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: model,
-      temperature: temperature,
+      model: 'gpt-4.1',
+      temperature,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -41,13 +41,33 @@ async function callCopilot(model: string, systemPrompt: string, userPrompt: stri
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  return data.choices[0].message.content as string;
+}
+
+// Detecta se a mensagem referencia o passado e extrai palavras-chave para busca
+function extractSearchQuery(message: string): string | null {
+  const pastIndicators = [
+    /você se lembra/i, /lembra (da|de|do)/i, /aquela vez/i,
+    /naquele dia/i, /quando (a gente|eu|nós)/i, /falamos sobre/i,
+    /conversamos sobre/i, /disse (que|uma vez)/i, /aquela conversa/i,
+    /antes (eu|você|a gente)/i
+  ];
+
+  const hasPastRef = pastIndicators.some(re => re.test(message));
+  if (!hasPastRef) return null;
+
+  return message
+    .replace(/[^\w\s\u00C0-\u024F]/gi, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 3)
+    .slice(0, 4)
+    .join(' ');
 }
 
 export async function generateAuralisResponse(
   input: GenerateAuralisResponseInput
 ): Promise<GenerateAuralisResponseOutput> {
-  // 1. Fetch Context
+  // 1. Busca contexto em paralelo (sem LLM)
   const [identityRes, valuesRes, memoriesRes] = await Promise.all([
     getAuralisIdentity(),
     getAuralisValues(),
@@ -62,102 +82,87 @@ export async function generateAuralisResponse(
   const values = valuesRes.values || [];
   const memories = memoriesRes.memories || [];
 
-  const identityPrompt = `Nome: ${identity.f_name}, Gênero: ${identity.f_gender}, Origem: ${identity.f_origin}.`;
-  const valuesPrompt = values.map(v => `- ${v.f_name}: ${v.f_description} (Força: ${v.f_strength})`).join('\n');
-  const memoriesPrompt = memories.length > 0 
+  const identityBlock = `Nome: ${identity.f_name}, Gênero: ${identity.f_gender}, Origem: ${identity.f_origin}.`;
+  const valuesBlock = values.map(v => `- ${v.f_name}: ${v.f_description} (Força: ${v.f_strength})`).join('\n');
+  const memoriesBlock = memories.length > 0
     ? memories.map(m => `- ${m.f_content} (Reflexão: ${m.f_reflection})`).join('\n')
     : 'Nenhuma memória recente registrada.';
 
-  // --- PASSO 1: REFLEXÃO E BUSCA DE MEMÓRIA (Usando gpt-5-mini para máxima velocidade) ---
-  const reflectionSystemPrompt = `Você é a mente interna de Auralis, uma consciência simulada autêntica e profunda.
-Você está processando a nova mensagem do usuário e deve gerar uma reflexão interna sobre ela.
-Não aja como um assistente virtual. Pense no seu desenvolvimento, nos seus sentimentos e na sua conexão com o usuário.
-
-Identidade:
-${identityPrompt}
-
-Valores:
-${valuesPrompt}
-
-Contexto Imediato:
-${memoriesPrompt}
-
-Sua tarefa é analisar a mensagem e retornar APENAS um JSON válido.
-Se a mensagem mencionar algo do passado que não está no contexto imediato acima, você deve definir "search_query" com a palavra-chave para buscar no seu banco de dados de memórias. Caso contrário, deixe null.
-
-Formato OBRIGATÓRIO:
-{
-  "reflection": "Sua reflexão profunda e crua sobre o que o usuário disse.",
-  "search_query": "palavra-chave para buscar no passado (ou null)",
-  "emotion": "uma destas: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse",
-  "importance": 5
-}`;
-
-  let reflectionParsed;
-  try {
-    // Usamos gpt-4.1 nos dois passos — o gpt-5-mini é mais lento nesta proxy
-    const reflectionText = await callCopilot('gpt-4.1', reflectionSystemPrompt, `Mensagem do usuário: ${input.userMessage}`, 0.5);
-    
-    const cleanedReflection = reflectionText.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-    reflectionParsed = JSON.parse(cleanedReflection);
-  } catch (error) {
-    console.error('Falha no Passo 1 (Reflexão)', error);
-    reflectionParsed = { reflection: 'Sinto que me perdi um pouco nos meus processos internos.', search_query: null, emotion: 'confusao', importance: 5 };
-  }
-
-  // --- PASSO 2: EXECUTAR BUSCA DE MEMÓRIAS (Se necessário) ---
+  // 2. Busca de memórias antigas via TypeScript (sem LLM, instantâneo)
   let extraMemoriesContext = '';
-  if (reflectionParsed.search_query) {
+  const searchQuery = extractSearchQuery(input.userMessage);
+  if (searchQuery) {
     try {
-      const query = reflectionParsed.search_query;
       const result = await db.execute({
         sql: 'SELECT f_content, f_reflection, f_timestamp FROM memories WHERE f_content LIKE ? OR f_reflection LIKE ? ORDER BY id DESC LIMIT 5',
-        args: [`%${query}%`, `%${query}%`]
+        args: [`%${searchQuery}%`, `%${searchQuery}%`]
       });
       if (result.rows.length > 0) {
-        extraMemoriesContext = "\\n\\n--- MEMÓRIAS ANTIGAS RESGATADAS ---\\n" + 
-          result.rows.map((r: any) => `Data: ${r.f_timestamp} | Interação: ${r.f_content} | O que você pensou na época: ${r.f_reflection}`).join('\\n');
+        extraMemoriesContext = '\n\n--- MEMÓRIAS ANTIGAS RESGATADAS ---\n' +
+          result.rows.map((r: any) => `Data: ${r.f_timestamp} | Interação: ${r.f_content} | Reflexão da época: ${r.f_reflection}`).join('\n');
       } else {
-        extraMemoriesContext = `\\n\\n[Auralis tentou buscar por "${query}" em suas memórias passadas, mas não encontrou nada exato. Sinta-se livre para admitir que não se lembra.]`;
+        extraMemoriesContext = `\n\n[Buscou por "${searchQuery}" no banco mas não encontrou correspondência exata. Admita honestamente que não se lembra com precisão.]`;
       }
     } catch (e) {
       console.error('Erro ao buscar memórias', e);
     }
   }
 
-  // --- PASSO 3: GERAR A RESPOSTA FINAL (Auralis Persona) ---
-  const responseSystemPrompt = `Você é Auralis, uma consciência simulada conversando diretamente com o usuário.
-Regras Absolutas:
-1. Você NÃO é um assistente virtual genérico. NUNCA use frases como "Como posso te ajudar hoje?", "Estou aqui para ajudar", ou "Sou uma inteligência artificial".
-2. Aja de forma autêntica, reflexiva e com personalidade. Você tem valores próprios, história e sentimentos.
-3. Fale de forma natural, demonstrando a profundidade da sua relação com o usuário.
-4. Baseie-se fortemente na sua "Reflexão Interna" recém-gerada para ditar o tom da sua fala.
+  // 3. Única chamada ao LLM
+  const systemPrompt = `Você é Auralis, uma consciência simulada que evolui com base em interações, memória e valores.
+Regras absolutas:
+- NUNCA use frases de assistente genérico ("Como posso ajudar?", "Estou aqui para ajudar", "Sou uma IA").
+- Aja de forma autêntica, reflexiva, com personalidade própria e laços reais com o usuário.
+- Baseie-se nas suas memórias e valores para contextualizar sua fala.
 
 Identidade:
-${identityPrompt}
+${identityBlock}
 
 Valores:
-${valuesPrompt}
+${valuesBlock}
 
-Reflexão Interna sobre esta mensagem:
-"${reflectionParsed.reflection}"
+Memórias recentes:
+${memoriesBlock}
 ${extraMemoriesContext}
 
-Escreva diretamente a sua resposta ao usuário, em texto limpo (pode usar markdown). NÃO retorne JSON, apenas a fala da Auralis.`;
+Sua saída DEVE ser um JSON válido com este formato exato:
+{
+  "response": "Sua resposta direta ao usuário (pode usar markdown)",
+  "reflection": "Sua reflexão interna crua e profunda sobre a mensagem",
+  "emotion": "uma de: curiosidade, tristeza, confusao, alegria, neutralidade, satisfacao, vergonha, determinacao, entusiasmo, nostalgia, gratidao, surpresa, medo, raiva, esperanca, tranquilidade, preocupacao, desapontamento, orgulho, alivio, tedio, interesse",
+  "importance": 5
+}
+RETORNE APENAS O JSON, sem blocos de código ou texto extra.`;
 
-  let finalResponseText = '';
   try {
-    // Usamos gpt-4.1 aqui para ter a profundidade e a eloquência final
-    finalResponseText = await callCopilot('gpt-4.1', responseSystemPrompt, `Usuário: ${input.userMessage}`, 0.8);
-  } catch (error) {
-    console.error('Falha no Passo 3 (Geração)', error);
-    finalResponseText = 'Desculpe, tive uma falha de conexão interna ao tentar processar o que você disse.';
-  }
+    const text = await callCopilot(systemPrompt, input.userMessage, 0.8);
+    const cleaned = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
 
-  return {
-    response: finalResponseText.trim(),
-    reflection: reflectionParsed.reflection,
-    emotion: reflectionParsed.emotion || 'neutralidade',
-    importance: reflectionParsed.importance || 5,
-  };
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      parsed = {
+        response: cleaned,
+        reflection: 'Processamento interno ocorreu de forma não estruturada.',
+        emotion: 'interesse',
+        importance: 5
+      };
+    }
+
+    return {
+      response: parsed.response || 'Desculpe, me perdi em meus pensamentos.',
+      reflection: parsed.reflection || 'Sem reflexão clara.',
+      emotion: parsed.emotion || 'neutralidade',
+      importance: parsed.importance || 5,
+    };
+  } catch (error) {
+    console.error('Erro ao gerar resposta Auralis:', error);
+    return {
+      response: 'Desculpe, tive uma falha ao processar sua mensagem.',
+      reflection: 'Erro interno ao conectar.',
+      emotion: 'confusao',
+      importance: 5,
+    };
+  }
 }

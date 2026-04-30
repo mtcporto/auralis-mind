@@ -95,8 +95,8 @@ Formato OBRIGATÓRIO:
 
   let reflectionParsed;
   try {
-    // Usamos gpt-5-mini aqui para raciocínio ultrarrápido
-    const reflectionText = await callCopilot('gpt-5-mini', reflectionSystemPrompt, `Mensagem do usuário: ${input.userMessage}`, 0.5);
+    // Usamos gpt-4.1 nos dois passos — o gpt-5-mini é mais lento nesta proxy
+    const reflectionText = await callCopilot('gpt-4.1', reflectionSystemPrompt, `Mensagem do usuário: ${input.userMessage}`, 0.5);
     
     const cleanedReflection = reflectionText.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
     reflectionParsed = JSON.parse(cleanedReflection);

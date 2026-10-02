@@ -17,7 +17,7 @@ export async function handleUserMessageAction(
   userInput: string
 ): Promise<AuralisInteractionResult | { error: string }> {
   try {
-    // 1. Call the Genkit flow to get Auralis's response and thoughts
+    // 1. Call the AI function to get Auralis's response and thoughts
     const flowOutput = await generateAuralisResponse({ userMessage: userInput });
     console.log(">>>> [actions.ts] AI Flow Output:", JSON.stringify(flowOutput, null, 2));
 

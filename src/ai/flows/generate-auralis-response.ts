@@ -14,35 +14,10 @@ export interface GenerateAuralisResponseOutput {
   importance: number;
 }
 
-// Wrapper nativo usando fetch sem SDK
-async function callCopilot(systemPrompt: string, userPrompt: string, temperature = 0.7) {
-  const url = 'https://copilot-mtcporto.vercel.app/v1/chat/completions';
-  const apiKey = process.env.OPENAI_API_KEY || 'dummy-key';
+import { completeCopilot, parseCopilotJson } from '@/ai/copilot';
+import { z } from 'zod';
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'gpt-4.1',
-      temperature,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ]
-    })
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`API erro: ${response.status} ${text}`);
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content as string;
-}
+const ResponseSchema = z.object({ response: z.string().min(1), reflection: z.string(), emotion: z.string(), importance: z.number().min(0).max(10) });
 
 // Detecta se a mensagem referencia o passado e extrai palavras-chave para busca
 function extractSearchQuery(message: string): string | null {
@@ -67,6 +42,7 @@ function extractSearchQuery(message: string): string | null {
 export async function generateAuralisResponse(
   input: GenerateAuralisResponseInput
 ): Promise<GenerateAuralisResponseOutput> {
+  input = z.object({ userMessage: z.string().trim().min(1).max(16000) }).parse(input);
   // 1. Busca contexto em paralelo (sem LLM)
   const [identityRes, valuesRes, memoriesRes] = await Promise.all([
     getAuralisIdentity(),
@@ -135,27 +111,8 @@ Sua saída DEVE ser um JSON válido com este formato exato:
 RETORNE APENAS O JSON, sem blocos de código ou texto extra.`;
 
   try {
-    const text = await callCopilot(systemPrompt, input.userMessage, 0.8);
-    const cleaned = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      parsed = {
-        response: cleaned,
-        reflection: 'Processamento interno ocorreu de forma não estruturada.',
-        emotion: 'interesse',
-        importance: 5
-      };
-    }
-
-    return {
-      response: parsed.response || 'Desculpe, me perdi em meus pensamentos.',
-      reflection: parsed.reflection || 'Sem reflexão clara.',
-      emotion: parsed.emotion || 'neutralidade',
-      importance: parsed.importance || 5,
-    };
+    const text = await completeCopilot(systemPrompt, input.userMessage, { temperature: 0.8, json: true });
+    return ResponseSchema.parse(parseCopilotJson(text));
   } catch (error) {
     console.error('Erro ao gerar resposta Auralis:', error);
     return {

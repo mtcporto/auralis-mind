@@ -19,3 +19,8 @@ O objetivo principal deste projeto é criar uma experiência de interação com 
 
 
 To get started, explore `src/app/page.tsx`.
+
+
+## Desenvolvimento
+
+Baseline: Node.js 24.x. Consulte o `package.json` para instalação, validação e build.

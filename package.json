@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack -p 9002",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:ai": "node --experimental-strip-types --test tests/copilot.test.mjs",
     "test:braces-security": "node --test vendor/guarded-braces/test/security.test.cjs"
@@ -43,12 +43,12 @@
     "dotenv": "^16.6.1",
     "firebase": "^11.8.1",
     "lucide-react": "^0.475.0",
-    "next": "15.5.27",
+    "next": "16.4.2",
     "next-themes": "^0.3.0",
     "patch-package": "^8.0.0",
-    "react": "^18.3.1",
-    "react-day-picker": "^8.10.1",
-    "react-dom": "^18.3.1",
+    "react": "19.3.0",
+    "react-day-picker": "^9.0.0",
+    "react-dom": "19.3.0",
     "react-hook-form": "^7.54.2",
     "react-markdown": "^9.0.1",
     "react-syntax-highlighter": "^15.5.0",
@@ -60,12 +60,12 @@
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "tailwindcss": "^4.1.0",
+    "typescript": "6.0.3"
   },
   "overrides": {
     "next": {
@@ -79,5 +79,8 @@
   "allowScripts": {
     "@firebase/util@1.12.1": true,
     "protobufjs@7.6.6": true
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

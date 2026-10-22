@@ -55,7 +55,7 @@ export default function AuralisMindPage() {
       
       <main className={cn(
         "flex-grow container mx-auto py-4 md:py-6 grid grid-cols-1 gap-4 md:gap-6 overflow-hidden",
-        isProfileCollapsed ? "md:grid-cols-[auto,1fr]" : "md:grid-cols-[minmax(300px,1fr),2fr]"
+        isProfileCollapsed ? "md:grid-cols-[auto_1fr]" : "md:grid-cols-[minmax(300px,1fr)_2fr]"
       )}>
         <aside className={cn(
           "md:col-span-1 h-full min-h-[300px] md:min-h-0 md:max-h-[calc(100vh-100px)] transition-all duration-300 ease-in-out",
